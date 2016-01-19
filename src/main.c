@@ -42,7 +42,7 @@ int main(void) {
 	cph_stdio_init();
 
 	/* Output demo infomation. */
-	TRACE("\r\n-- Decawave SPI TEST --\n\r");
+	TRACE(APP_NAME, FW_MAJOR, FW_MINOR);
 
 	uint32_t f = sysclk_get_cpu_hz();
 	TRACE("CPU FREQ: %lu\r\n", f);

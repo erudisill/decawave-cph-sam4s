@@ -87,18 +87,21 @@ void cph_deca_init_device() {
 
 	dwt_configure(&config);
 
-	txconfig.PGdly = 0xC2;			// for channel 2
-	txconfig.power = 0x07274767;	// smart power, channel 2, 64MHz
-	dwt_setsmarttxpower(1);
-	dwt_configuretxrf(&txconfig);
+//	txconfig.PGdly = 0xC2;			// for channel 2
+//	txconfig.power = 0x07274767;	// smart power, channel 2, 64MHz
+//	dwt_setsmarttxpower(1);
+//	dwt_configuretxrf(&txconfig);
 
 	dwt_setrxantennadelay(RX_ANT_DLY);
 	dwt_settxantennadelay(TX_ANT_DLY);
+
+	// Clear CLKPLL_LL
+	dwt_write32bitreg(SYS_STATUS_ID, 0x02000000);
 }
 
 void cph_deca_init_network(uint16_t panid, uint16_t shortid) {
 	// Configure network parameters
 	dwt_setpanid(panid);
 	dwt_setaddress16(shortid);
-	dwt_enableframefilter(DWT_FF_DATA_EN);
+//	dwt_enableframefilter(DWT_FF_DATA_EN);
 }
