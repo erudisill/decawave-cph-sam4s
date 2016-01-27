@@ -137,6 +137,12 @@ void anchor_run(void) {
 	cph_deca_init_device();
 	cph_deca_init_network(cph_config->panid, cph_config->shortid);
 
+	// TESTTESTTESTTESTTEST
+//	uint32_t reg = dwt_read32bitreg(SYS_CFG_ID);
+//	reg |= SYS_CFG_DIS_PHE;
+//	dwt_write32bitreg(SYS_CFG_ID, reg);
+
+
 	// Init list of paired tags
 	memset(paired_tags, 0, sizeof(cph_deca_pair_info_t) * MAX_TAGS);
 
@@ -146,9 +152,9 @@ void anchor_run(void) {
 	tx_coord_announce.header.source = cph_config->shortid;
 
 	// Announce ourselves if we're the coordinator
-	if (cph_mode & CPH_MODE_COORD) {
+	if (g_cph_mode & CPH_MODE_COORD) {
 		cph_coordid = cph_config->shortid;
-		cph_mode |= CPH_MODE_COORD;
+		g_cph_mode |= CPH_MODE_COORD;
 		announce_coord(COORD_ANNOUNCE_START_BURST);
 	}
 
@@ -163,8 +169,8 @@ void anchor_run(void) {
 			}
 		}
 
-		status_reg = dwt_read32bitreg(SYS_STATUS_ID);
-		printf("status: %08X\r\n", status_reg);
+//		status_reg = dwt_read32bitreg(SYS_STATUS_ID);
+//		printf("status: %08X\r\n", status_reg);
 
 		/* Activate reception immediately. */
 		dwt_rxenable(0);
@@ -227,14 +233,14 @@ void anchor_run(void) {
 					cph_coordid = id;
 					if (cph_coordid == cph_config->shortid) {
 						TRACE("becoming coord\r\n");
-						cph_mode |= CPH_MODE_COORD;
+						g_cph_mode |= CPH_MODE_COORD;
 					} else {
-						if (cph_mode & CPH_MODE_COORD) {
+						if (g_cph_mode & CPH_MODE_COORD) {
 							TRACE("giving coord to %04X\r\n", cph_coordid);
 						} else {
 							TRACE("recognizing coord as %04X\r\n", cph_coordid);
 						}
-						cph_mode &= (~CPH_MODE_COORD);
+						g_cph_mode &= (~CPH_MODE_COORD);
 					}
 				}
 
@@ -256,10 +262,12 @@ void anchor_run(void) {
 
 			// Ignore frame rejections and timeouts
 			uint32_t test = status_reg;// & (~(SYS_STATUS_AFFREJ | SYS_STATUS_RXRFTO));
-			if (test & SYS_STATUS_ALL_RX_ERR) {
+			//if (test & SYS_STATUS_ALL_RX_ERR)
+			{
 				TRACE("ERROR: dwt_rxenable has status of %08X\r\n", status_reg);
 				/* Clear RX error events in the DW1000 status register. */
-				dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_ALL_RX_ERR);
+				dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_ALL_RX_ERR | SYS_STATUS_CLKPLL_LL);
+
 			}
 		}
 	}

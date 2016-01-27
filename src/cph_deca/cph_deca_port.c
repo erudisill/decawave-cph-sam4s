@@ -114,13 +114,13 @@ bool cph_deca_isr_is_detected(void) {
 }
 
 decaIrqStatus_t cph_deca_isr_mutex_on(void) {
-	TRACE("cph_deca_isr_mutex_on\r\n");
+//	TRACE("cph_deca_isr_mutex_on\r\n");
 	cph_deca_isr_disable();
 	return 0x00;
 }
 
 void cph_deca_isr_mutex_off(decaIrqStatus_t s) {
-	TRACE("cph_deca_isr_mutex_off\r\n");
+//	TRACE("cph_deca_isr_mutex_off\r\n");
 	cph_deca_isr_enable();
 }
 

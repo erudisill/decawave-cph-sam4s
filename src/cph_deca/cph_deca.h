@@ -18,39 +18,44 @@
 #define MAC_TAG_ID				0x4556
 #define MAC_FC					0x8841
 #define MAC_FC_ACK				0x8861
+#define MAC_SHORT				0x1234
 
-#if defined(ANCHOR)
-#define APP_NAME  				"\r\nCPH ANCHOR Version %2X.%02X\r\n"
-#define MAC_ADDRESS				0x4350010000000077
-#define MAC_SHORT				MAC_ANCHOR_ID
-#define app_run					anchor_run
+
 void anchor_run(void);
-
-#elif defined(TAG)
-#define APP_NAME  				"\r\nCPH TAG Version %2X.%02X\r\n"
-#define MAC_ADDRESS				0x4350010000000078
-#define MAC_SHORT				MAC_TAG_ID
-#define app_run					tag_run
+void listener_run(void);
 void tag_run(void);
+void sender_run(void);
 
-#else
-#error "ANCHOR or TAG must be defined"
-#endif
+//#define DW_CONFIG		\
+//		{																													\
+//		    2,               /* Channel number. */																			\
+//		    DWT_PRF_64M,     /* Pulse repetition frequency. */																\
+//		    DWT_PLEN_128,    /* Preamble length. */																			\
+//		    DWT_PAC8,        /* Preamble acquisition chunk size. Used in RX only. */										\
+//		    9,               /* TX preamble code. Used in TX only. */														\
+//		    9,               /* RX preamble code. Used in RX only. */														\
+//		    0,               /* Use non-standard SFD (Boolean) */															\
+//		    DWT_BR_6M8,      /* Data rate. */																				\
+//		    DWT_PHRMODE_STD, /* PHY header mode. */																			\
+//		    (129 + 8 - 8)    /* SFD timeout (preamble length + 1 + SFD length - PAC size). Used in RX only. */				\
+//		}
 
 
+// Mode 3 from EVK
 #define DW_CONFIG		\
 		{																													\
 		    2,               /* Channel number. */																			\
-		    DWT_PRF_64M,     /* Pulse repetition frequency. */																\
-		    DWT_PLEN_128,    /* Preamble length. */																			\
-		    DWT_PAC8,        /* Preamble acquisition chunk size. Used in RX only. */										\
+			DWT_PRF_64M,     /* Pulse repetition frequency. */																\
+			DWT_PLEN_1024,    /* Preamble length. */																			\
+			DWT_PAC32,        /* Preamble acquisition chunk size. Used in RX only. */										\
 		    9,               /* TX preamble code. Used in TX only. */														\
 		    9,               /* RX preamble code. Used in RX only. */														\
-		    0,               /* Use non-standard SFD (Boolean) */															\
-		    DWT_BR_6M8,      /* Data rate. */																				\
+		    1,               /* Use non-standard SFD (Boolean) */															\
+			DWT_BR_110K,      /* Data rate. */																				\
 		    DWT_PHRMODE_STD, /* PHY header mode. */																			\
-		    (129 + 8 - 8)    /* SFD timeout (preamble length + 1 + SFD length - PAC size). Used in RX only. */				\
+			(1025 + 64 - 32)    /* SFD timeout (preamble length + 1 + SFD length - PAC size). Used in RX only. */				\
 		}
+
 
 
 /* Inter-ranging delay period, in milliseconds. */
@@ -141,7 +146,9 @@ enum {
 enum {
 	CPH_MODE_ANCHOR = 0x01,
 	CPH_MODE_TAG = 0x02,
-	CPH_MODE_COORD = 0x80
+	CPH_MODE_LISTENER = 0x03,
+	CPH_MODE_SENDER = 0x04,
+	CPH_MODE_COORD = 0x81
 };
 
 #define	FUNC_RANGE_REQU				0xE0
@@ -152,7 +159,7 @@ enum {
 #define FUNC_COORD_ANNO				0xE5
 #define FUNC_RANGE_REPO				0xE6
 
-#define CPH_MAX_MSG_SIZE		64
+#define CPH_MAX_MSG_SIZE		128
 
 #define PACKED	__attribute__((packed))
 
