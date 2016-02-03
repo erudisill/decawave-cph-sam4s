@@ -21,10 +21,12 @@
 
 #include <asf.h>
 
+#include <cph_config.h>
 #include <cph_millis.h>
 #include <cph_stdio.h>
 #include <cph_deca.h>
 #include <globals.h>
+#include <configure.h>
 
 typedef struct PACKED {
 	uint8_t magic[4];
@@ -34,6 +36,9 @@ typedef struct PACKED {
 	uint8_t fw_minor;
 	uint16_t panid;
 	uint16_t shortid;
+	dwt_config_t dwt_config;
+	uint8_t mode;
+	uint32_t sender_period;
 } cph_config_t;
 
 

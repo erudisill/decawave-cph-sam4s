@@ -94,4 +94,6 @@
 
 #include <spi.h>
 
+#include <flash_efc.h>
+
 #endif // ASF_H

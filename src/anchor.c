@@ -152,9 +152,9 @@ void anchor_run(void) {
 	tx_coord_announce.header.source = cph_config->shortid;
 
 	// Announce ourselves if we're the coordinator
-	if (g_cph_mode & CPH_MODE_COORD) {
+	if (cph_config->mode & CPH_MODE_COORD) {
 		cph_coordid = cph_config->shortid;
-		g_cph_mode |= CPH_MODE_COORD;
+//		cph_config->mode |= CPH_MODE_COORD;
 		announce_coord(COORD_ANNOUNCE_START_BURST);
 	}
 
@@ -233,14 +233,14 @@ void anchor_run(void) {
 					cph_coordid = id;
 					if (cph_coordid == cph_config->shortid) {
 						TRACE("becoming coord\r\n");
-						g_cph_mode |= CPH_MODE_COORD;
+						cph_config->mode |= CPH_MODE_COORD;
 					} else {
-						if (g_cph_mode & CPH_MODE_COORD) {
+						if (cph_config->mode & CPH_MODE_COORD) {
 							TRACE("giving coord to %04X\r\n", cph_coordid);
 						} else {
 							TRACE("recognizing coord as %04X\r\n", cph_coordid);
 						}
-						g_cph_mode &= (~CPH_MODE_COORD);
+						cph_config->mode &= (~CPH_MODE_COORD);
 					}
 				}
 

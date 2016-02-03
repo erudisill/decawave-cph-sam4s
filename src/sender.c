@@ -22,9 +22,7 @@ void sender_run(void) {
 
 	uint32_t announce_coord_ts = 0;
 	uint32_t elapsed = 0;
-
-
-	printf("SENDER\r\n");
+	uint32_t count = 0;
 
 	// Setup DW1000
 	dwt_txconfig_t txconfig;
@@ -35,7 +33,7 @@ void sender_run(void) {
 	dwt_initialise(DWT_LOADUCODE);
 	spi_set_rate_high();
 
-	dwt_configure(G_CONFIG_CURRENT_PTR);
+	dwt_configure(&cph_config->dwt_config);
 
 	dwt_setpanid(0x4350);
 	dwt_setaddress16(0x1234);
@@ -51,6 +49,8 @@ void sender_run(void) {
 
 	while (1) {
 
+		printf("sending %d\r\n", count++);
+
 		// Write message to frame buffer
 		tx_discover_msg.header.seq = seq++;
 		dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_TXFRS);
@@ -63,6 +63,6 @@ void sender_run(void) {
 		};
 		dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_TXFRS);
 
-		cph_millis_delay(250);
+		cph_millis_delay(cph_config->sender_period);
 	}
 }

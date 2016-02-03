@@ -10,9 +10,6 @@
 
 static uint8 frame_seq_nb = 0;
 
-// Default configuration for DW communication
-static dwt_config_t config = DW_CONFIG;
-
 
 void cph_deca_load_frame(cph_deca_msg_header_t * hdr, uint16_t size) {
 	// Write message to frame buffer
@@ -85,7 +82,7 @@ void cph_deca_init_device() {
 	dwt_initialise(DWT_LOADUCODE);
 	spi_set_rate_high();
 
-	dwt_configure(&config);
+	dwt_configure(&cph_config->dwt_config);
 
 //	txconfig.PGdly = 0xC2;			// for channel 2
 //	txconfig.power = 0x07274767;	// smart power, channel 2, 64MHz

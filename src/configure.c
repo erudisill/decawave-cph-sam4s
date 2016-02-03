@@ -11,6 +11,7 @@
 
 #define BUFFER_SIZE 80
 static char choice = 0;
+static int config_idx = -1;
 static char buffer[BUFFER_SIZE];
 
 
@@ -51,7 +52,26 @@ static int pac_inputs[] = {
 	64
 };
 
-static void print_config(dwt_config_t * source) {
+static bool get_line(uint8_t * buf, int max_len) {
+	int i = 0;
+	char c;
+	memset(buf, 0, max_len);
+
+	while ((c = getchar() & 0xFF) != '\r') {
+		TRACE("%c", c);
+		buf[i++] = c;
+		if (i == max_len) {
+			TRACE("--OVERRUN--\r\n");
+			return false;
+			break;
+		}
+	}
+
+	TRACE("\r\n");
+	return true;
+}
+
+void configure_print_dwt_config(dwt_config_t * source) {
 	int i;
 
 	TRACE("chan:%02X  ", source->chan);
@@ -217,19 +237,8 @@ static bool configure_user_defined(void) {
 		TRACE("FORMAT: ch prf plen pac txcode rxcode nssfd datarate phrmode sfdto\r\n");
 		TRACE("\r\n> ");
 
-		int i = 0;
-		memset(buffer, 0, BUFFER_SIZE);
-
-		while ((choice = getchar() & 0xFF) != '\r') {
-			TRACE("%c", choice);
-			buffer[i++] = choice;
-			if (i == BUFFER_SIZE) {
-				TRACE("--OVERRUN--\r\n");
-				break;
-			}
-		}
-
-		TRACE("\r\n");
+		if (get_line(buffer, BUFFER_SIZE) == false)
+			continue;
 
 		if (buffer[0] == 'x') {
 			TRACE("Exiting to Main Menu. No changes made.\r\n");
@@ -238,7 +247,115 @@ static bool configure_user_defined(void) {
 
 		valid = parse_config_tuples(buffer, &g_dwt_configs[G_CONFIG_USER_IDX]);
 		if (valid)
-			g_config_idx = G_CONFIG_USER_IDX;
+			config_idx = G_CONFIG_USER_IDX;
+	}
+
+	return true;
+}
+
+static bool configure_parameters(void) {
+
+	while (true) {
+		TRACE("\r\n\rParameters\r\n");
+		TRACE("===============\r\n");
+		TRACE("ENTER x to exit to Main Menu\r\n");
+		TRACE("0) g_sender_period_ms %d\r\n", cph_config->sender_period);
+		TRACE("\r\n> ");
+
+		choice = getchar() & 0xFF;
+		TRACE("%c\r\n", choice);
+
+		if (choice == 'x') {
+			TRACE("Exiting to Main Menu. No changes made.\r\n");
+			return false;
+		}
+
+		if (choice < '0' || choice > '0') {
+			TRACE("INVALID CHOICE\r\n");
+			continue;
+		}
+
+		TRACE("\r\nEnter New Value: ");
+
+		if (get_line(buffer, BUFFER_SIZE) == false)
+			continue;
+
+		bool valid = true;
+
+		if (choice == '0') {
+			if (sscanf(buffer, "%d", &cph_config->sender_period) != 1) {
+				valid = false;
+			}
+		}
+
+		if (valid == false) {
+			TRACE("BAD INPUT\r\n");
+		}
+		else {
+			TRACE("CHANGE ACCEPTED\r\n");
+		}
+	}
+
+	return true;
+}
+
+static bool test_flash(void) {
+
+	cph_config_t * config;
+	uint8_t test = 0x01;
+
+	while (true) {
+		TRACE("\r\nTest Flash\r\n");
+		TRACE("=================\r\n");
+		TRACE("I) Init\r\n");
+		TRACE("R) Read\r\n");
+		TRACE("W) Write\r\n");
+		TRACE("X) Exit to menu\r\n");
+		TRACE("\r\n> ");
+
+		choice = getchar() & 0xFF;
+		TRACE("%c\r\n", choice);
+
+		if (choice == 'x' || choice == 'X') {
+			TRACE("Exiting to Main Menu. No changes made.\r\n");
+			return false;
+		}
+
+		if (choice == 'i' || choice == 'I') {
+			config = cph_config_init();
+			printf("config: ");
+			for (int i=0;i<sizeof(cph_config_t);i++)
+				printf("%02X ", ((uint8_t*)config)[i]);
+			printf("\r\n");
+		}
+		else if (choice == 'r' || choice == 'R') {
+			config = cph_config_read();
+			printf("config: ");
+			for (int i=0;i<sizeof(cph_config_t);i++)
+				printf("%02X ", ((uint8_t*)config)[i]);
+			printf("\r\n");
+		}
+		else if (choice == 'w' || choice == 'W') {
+			config->magic[0] = test++;
+			config->magic[1] = test++;
+			config->magic[2] = test++;
+			config->magic[3] = test++;
+			config->hw_major = test++;
+			config->hw_minor = test++;
+			config->fw_major = test++;
+			config->fw_minor = test++;
+			config->panid = test++;
+			config->shortid = test++;
+			cph_config_write();
+			printf("config: ");
+			for (int i=0;i<sizeof(cph_config_t);i++)
+				printf("%02X ", ((uint8_t*)config)[i]);
+			printf("\r\n");
+		}
+		else {
+			TRACE("INVALID CHOICE\r\n");
+		}
+
 	}
 
 	return true;
@@ -246,26 +363,40 @@ static bool configure_user_defined(void) {
 
 void configure_main(void) {
 
+	uint8_t buffer[10];
+
+	config_idx = -1;
+
+	cph_config = cph_config_init();
+
 	while (1) {
 		TRACE("\r\n\r\nMain Menu\r\n");
 		TRACE("==============\r\n");
 
 		for (int i=0;i<G_CONFIG_COUNT - 1;i++) {
 			TRACE("%d) ", i);
-			print_config(&g_dwt_configs[i]);
+			configure_print_dwt_config(&g_dwt_configs[i]);
 			TRACE("\r\n");
 		}
 
 		TRACE("U) User defined\r\n");
+		TRACE("P) Set parameters\r\n");
 		TRACE("A) Exit and run as ANCHOR\r\n");
 		TRACE("C) Exit and run as COORDINATOR\r\n");
 		TRACE("T) Exit and run as TAG\r\n");
 		TRACE("L) Exit and run as LISTENER\r\n");
 		TRACE("S) Exit and run as SENDER\r\n");
+		TRACE("F) Test flash\r\n");
 
-		TRACE("\r\nCurrent\r\n");
-		TRACE("\r\n   ");
-		print_config(&g_dwt_configs[g_config_idx]);
+		TRACE("\r\nCurrent Config : ");
+		configure_print_dwt_config(&cph_config->dwt_config);
+		TRACE("\r\nNew Config     : ");
+		if (config_idx == -1) {
+			TRACE("none selected");
+		}
+		else {
+			configure_print_dwt_config(&g_dwt_configs[config_idx]);
+		}
 		TRACE("\r\n");
 
 		TRACE("\r\n> ");
@@ -275,35 +406,41 @@ void configure_main(void) {
 
 		if (choice >= '0' && choice <= ('0' + G_CONFIG_COUNT - 1 - 1)) {
 			TRACE("VALID\r\n");
-			g_config_idx = choice - '0';
+			config_idx = choice - '0';
 		}
 		else if (choice == 'u' || choice == 'U') {
 			configure_user_defined();
 		}
+		else if (choice == 'p' || choice == 'P') {
+			configure_parameters();
+		}
 		else if (choice == 'a' || choice == 'A') {
-			g_cph_mode = CPH_MODE_ANCHOR;
+			cph_config->mode = CPH_MODE_ANCHOR;
 			TRACE("Exiting as CPH_MODE_ANCHOR\r\n");
 			break;
 		}
 		else if (choice == 'c' || choice == 'C') {
-			g_cph_mode = CPH_MODE_COORD;
+			cph_config->mode = CPH_MODE_COORD;
 			TRACE("Exiting as CPH_MODE_COORD\r\n");
 			break;
 		}
 		else if (choice == 't' || choice == 'T') {
-			g_cph_mode = CPH_MODE_TAG;
+			cph_config->mode = CPH_MODE_TAG;
 			TRACE("Exiting as CPH_MODE_TAG\r\n");
 			break;
 		}
 		else if (choice == 'l' || choice == 'L') {
-			g_cph_mode = CPH_MODE_LISTENER;
+			cph_config->mode = CPH_MODE_LISTENER;
 			TRACE("Exiting as CPH_MODE_LISTENER\r\n");
 			break;
 		}
 		else if (choice == 's' || choice == 'S') {
-			g_cph_mode = CPH_MODE_SENDER;
+			cph_config->mode = CPH_MODE_SENDER;
 			TRACE("Exiting as CPH_MODE_SENDER\r\n");
 			break;
+		}
+		else if (choice == 'f' || choice == 'F') {
+			test_flash();
 		}
 		else {
 			TRACE("NOT VALID\r\n");
@@ -312,9 +449,17 @@ void configure_main(void) {
 
 	TRACE("\r\n");
 
+	TRACE("Writing config...");
+	if (config_idx >= 0) {
+		memcpy(&cph_config->dwt_config, &g_dwt_configs[config_idx], sizeof(dwt_config_t));
+	}
+	cph_config_write();
+	TRACE("done.\r\n");
+
 	TRACE("Starting in ");
 	for (int i=3;i>0;i--) {
 		TRACE("%d ", i);
 		cph_millis_delay(1000);
 	}
+	TRACE("\r\n");
 }

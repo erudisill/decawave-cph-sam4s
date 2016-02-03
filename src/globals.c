@@ -48,6 +48,7 @@ dwt_config_t g_dwt_configs[] = {
 	},
 };
 
-int g_config_idx = 0;
 
-int g_cph_mode = CPH_MODE_ANCHOR;
+//int g_cph_mode = CPH_MODE_ANCHOR;
+
+//uint32_t g_sender_period_ms = 250;

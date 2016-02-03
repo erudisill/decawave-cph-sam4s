@@ -66,7 +66,8 @@ void listener_run(void) {
 
 	uint32_t announce_coord_ts = 0;
 	uint32_t elapsed = 0;
-
+	uint32_t last_ts = 0;
+	uint32_t count = 0;
 
 	irq_init();
 	pio_disable_interrupt(DW_IRQ_PIO, DW_IRQ_MASK);
@@ -82,7 +83,7 @@ void listener_run(void) {
 	dwt_initialise(DWT_LOADUCODE);
 	spi_set_rate_high();
 
-	dwt_configure(G_CONFIG_CURRENT_PTR);
+	dwt_configure(&cph_config->dwt_config);
 
 	dwt_setpanid(0x4350);
 	dwt_setaddress16(0x1234);
@@ -107,6 +108,12 @@ void listener_run(void) {
 	dwt_rxenable(0);
 
 	while (1) {
+
+		elapsed = cph_get_millis() - last_ts;
+		if (elapsed > 5000) {
+			printf("alive %d\r\n", count++);
+			last_ts = cph_get_millis();
+		}
 
 		if (trx_signal == SIGNAL_RCV) {
 			printf("[RCV] %d - ", frame_len);

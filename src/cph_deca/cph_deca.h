@@ -26,37 +26,6 @@ void listener_run(void);
 void tag_run(void);
 void sender_run(void);
 
-//#define DW_CONFIG		\
-//		{																													\
-//		    2,               /* Channel number. */																			\
-//		    DWT_PRF_64M,     /* Pulse repetition frequency. */																\
-//		    DWT_PLEN_128,    /* Preamble length. */																			\
-//		    DWT_PAC8,        /* Preamble acquisition chunk size. Used in RX only. */										\
-//		    9,               /* TX preamble code. Used in TX only. */														\
-//		    9,               /* RX preamble code. Used in RX only. */														\
-//		    0,               /* Use non-standard SFD (Boolean) */															\
-//		    DWT_BR_6M8,      /* Data rate. */																				\
-//		    DWT_PHRMODE_STD, /* PHY header mode. */																			\
-//		    (129 + 8 - 8)    /* SFD timeout (preamble length + 1 + SFD length - PAC size). Used in RX only. */				\
-//		}
-
-
-// Mode 3 from EVK
-#define DW_CONFIG		\
-		{																													\
-		    2,               /* Channel number. */																			\
-			DWT_PRF_64M,     /* Pulse repetition frequency. */																\
-			DWT_PLEN_1024,    /* Preamble length. */																			\
-			DWT_PAC32,        /* Preamble acquisition chunk size. Used in RX only. */										\
-		    9,               /* TX preamble code. Used in TX only. */														\
-		    9,               /* RX preamble code. Used in RX only. */														\
-		    1,               /* Use non-standard SFD (Boolean) */															\
-			DWT_BR_110K,      /* Data rate. */																				\
-		    DWT_PHRMODE_STD, /* PHY header mode. */																			\
-			(1025 + 64 - 32)    /* SFD timeout (preamble length + 1 + SFD length - PAC size). Used in RX only. */				\
-		}
-
-
 
 /* Inter-ranging delay period, in milliseconds. */
 #define RNG_DELAY_MS 	5

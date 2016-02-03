@@ -14,12 +14,8 @@
 #define G_CONFIG_COUNT		3
 #define G_CONFIG_USER_IDX	(G_CONFIG_COUNT - 1)
 
-#define G_CONFIG_CURRENT_PTR	(&g_dwt_configs[g_config_idx])
 
 extern dwt_config_t g_dwt_configs[];
-extern int g_config_idx;
-
-extern int g_cph_mode;
 
 
 
