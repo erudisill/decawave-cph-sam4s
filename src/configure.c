@@ -260,6 +260,8 @@ static bool configure_parameters(void) {
 		TRACE("===============\r\n");
 		TRACE("ENTER x to exit to Main Menu\r\n");
 		TRACE("0) g_sender_period_ms %d\r\n", cph_config->sender_period);
+		TRACE("1) pan_id 0x%02X\r\n", cph_config->panid);
+		TRACE("2) short_id 0x%02X\r\n", cph_config->shortid);
 		TRACE("\r\n> ");
 
 		choice = getchar() & 0xFF;
@@ -270,7 +272,7 @@ static bool configure_parameters(void) {
 			return false;
 		}
 
-		if (choice < '0' || choice > '0') {
+		if (choice < '0' || choice > '2') {
 			TRACE("INVALID CHOICE\r\n");
 			continue;
 		}
@@ -281,9 +283,22 @@ static bool configure_parameters(void) {
 			continue;
 
 		bool valid = true;
+		uint32_t hex = 0;
 
 		if (choice == '0') {
 			if (sscanf(buffer, "%d", &cph_config->sender_period) != 1) {
+				valid = false;
+			}
+		} else if (choice == '1') {
+			if (sscanf(buffer, "%x", &hex) == 1) {
+				cph_config->panid = 0xffff & hex;
+			} else {
+				valid = false;
+			}
+		} else if (choice == '2') {
+			if (sscanf(buffer, "%x", &hex) == 1) {
+				cph_config->shortid = 0xffff & hex;
+			} else {
 				valid = false;
 			}
 		}
@@ -386,6 +401,7 @@ void configure_main(void) {
 		TRACE("T) Exit and run as TAG\r\n");
 		TRACE("L) Exit and run as LISTENER\r\n");
 		TRACE("S) Exit and run as SENDER\r\n");
+		TRACE("D) Exit and run with compiled DEFAULTS\r\n");
 		TRACE("F) Test flash\r\n");
 
 		TRACE("\r\nCurrent Config : ");
@@ -437,6 +453,12 @@ void configure_main(void) {
 		else if (choice == 's' || choice == 'S') {
 			cph_config->mode = CPH_MODE_SENDER;
 			TRACE("Exiting as CPH_MODE_SENDER\r\n");
+			break;
+		}
+		else if (choice == 'd' || choice == 'D') {
+			memset(cph_config, 0, sizeof(cph_config_t));
+			cph_config_write();
+			TRACE("Exiting as compiled DEFAULT\r\n");
 			break;
 		}
 		else if (choice == 'f' || choice == 'F') {

@@ -12,9 +12,9 @@ void cph_deca_spi_init(void) {
 
 	spi_set_master_mode(DW_SPI);
 
-	pio_configure_pin(PIO_PA12_IDX, PIO_PERIPH_A);	// MISO
-	pio_configure_pin(PIO_PA13_IDX, PIO_PERIPH_A);	// MOSI
-	pio_configure_pin(PIO_PA14_IDX, PIO_PERIPH_A);	// SPCK
+	pio_configure_pin(DW_MISO_PIO_IDX, DW_MISO_PERIPH);	// MISO
+	pio_configure_pin(DW_MOSI_PIO_IDX, DW_MOSI_PERIPH);	// MOSI
+	pio_configure_pin(DW_SPCK_PIO_IDX, DW_SPCK_PERIPH);	// SPCK
 	pio_configure_pin(DW_CSn_PIO_IDX, DW_CSn_PIO_PERIPH);
 	pmc_enable_periph_clk(ID_SPI);
 

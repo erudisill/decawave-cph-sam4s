@@ -25,6 +25,7 @@
 #include <cph_millis.h>
 #include <cph_stdio.h>
 #include <cph_deca.h>
+#include <cph_utils.h>
 #include <globals.h>
 #include <configure.h>
 

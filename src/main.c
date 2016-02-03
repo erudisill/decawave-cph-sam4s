@@ -53,7 +53,9 @@ static void init_config(void) {
 		cph_config->hw_major = BOARD_REV_MAJOR;
 		cph_config->hw_minor = BOARD_REV_MINOR;
 		cph_config->panid = MAC_PAN_ID;
-		cph_config->shortid = 0x1234;
+
+		cph_config->shortid = cph_utils_get_shortid_candidate();
+
 #if defined(ANCHOR)
 		cph_config->mode = CPH_MODE_ANCHOR;
 #elif defined(TAG)
@@ -64,8 +66,18 @@ static void init_config(void) {
 		cph_config->mode = CPH_MODE_SENDER;
 #endif
 		memcpy(&cph_config->dwt_config, &g_dwt_configs[0], sizeof(dwt_config_t));
+		cph_config->sender_period = POLL_DELAY_MS;
 		cph_config_write();
 	}
+
+}
+
+void print_greeting() {
+	/* Output demo infomation. */
+	TRACE("\r\nCPH RTLS Version %2X.%02X\r\n", FW_MAJOR, FW_MINOR);
+
+	uint32_t f = sysclk_get_cpu_hz();
+	TRACE("CPU FREQ: %lu\r\n", f);
 
 	TRACE("HW:%2X.%02X  FW:%2X.%02X  PAN_ID:%04X  SHORT_ID:%04X\r\n",
 			cph_config->hw_major,
@@ -74,6 +86,24 @@ static void init_config(void) {
 			cph_config->fw_minor,
 			cph_config->panid,
 			cph_config->shortid);
+
+	if (cph_config->mode == CPH_MODE_ANCHOR) {
+		TRACE("Mode: ANCHOR\r\n");
+	} else if (cph_config->mode == CPH_MODE_COORD) {
+		TRACE("Mode: COORDINATOR\r\n");
+	} else if (cph_config->mode == CPH_MODE_TAG) {
+		TRACE("Mode: TAG\r\n");
+	} else if (cph_config->mode == CPH_MODE_LISTENER) {
+		TRACE("Mode: LISTENER\r\n");
+	} else if (cph_config->mode == CPH_MODE_SENDER) {
+		TRACE("Mode: SENDER\r\n");
+	} else {
+		TRACE("Mode: UNKNOWN!\r\n");
+	}
+
+	TRACE("dwt_config: ");
+	configure_print_dwt_config(&cph_config->dwt_config);
+	TRACE("\r\n");
 }
 
 int main(void) {
@@ -86,11 +116,9 @@ int main(void) {
 	cph_millis_init();
 	cph_stdio_init();
 
-	/* Output demo infomation. */
-	TRACE("\r\nCPH RTLS Version %2X.%02X\r\n", FW_MAJOR, FW_MINOR);
+	init_config();
 
-	uint32_t f = sysclk_get_cpu_hz();
-	TRACE("CPU FREQ: %lu\r\n", f);
+	print_greeting();
 
 	// Blink LED for 5 seconds
 	pio_set_pin_high(LED_STATUS1_IDX);
@@ -99,6 +127,9 @@ int main(void) {
 		uart_read(CONSOLE_UART, &c);
 		if (c == 'c') {
 			configure_main();
+			init_config();
+			TRACE("\r\nPOST CONFIG\r\n");
+			print_greeting();
 			break;
 		}
 		pio_toggle_pin(LED_STATUS0_IDX);
@@ -106,28 +137,17 @@ int main(void) {
 	}
 	pio_set_pin_high(LED_STATUS0_IDX);
 
-	init_config();
-
 	cph_deca_spi_init();
 
-	TRACE("dwt_config: ");
-	configure_print_dwt_config(&cph_config->dwt_config);
-	TRACE("\r\n");
-
 	if (cph_config->mode == CPH_MODE_ANCHOR) {
-		TRACE("Mode: ANCHOR\r\n");
 		anchor_run();
 	} else if (cph_config->mode == CPH_MODE_COORD) {
-		TRACE("Mode: COORDINATOR\r\n");
 		anchor_run();
 	} else if (cph_config->mode == CPH_MODE_TAG) {
-		TRACE("Mode: TAG\r\n");
 		tag_run();
 	} else if (cph_config->mode == CPH_MODE_LISTENER) {
-		TRACE("Mode: LISTENER\r\n");
 		listener_run();
 	} else if (cph_config->mode == CPH_MODE_SENDER) {
-		TRACE("Mode: SENDER\r\n");
 		sender_run();
 	}
 }
