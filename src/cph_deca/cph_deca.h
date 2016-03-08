@@ -120,7 +120,7 @@ enum {
 	CPH_MODE_COORD = 0x81
 };
 
-#define	FUNC_RANGE_REQU				0xE0
+#define	FUNC_RANGE_POLL				0xE0
 #define FUNC_RANGE_RESP				0xE1
 #define FUNC_DISC_ANNO				0xE2
 #define FUNC_DISC_REPLY				0xE3

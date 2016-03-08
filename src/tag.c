@@ -23,7 +23,7 @@ MAC_FC,			// mac.ctl - data frame, frame pending, pan id comp, short dest, short
 		MAC_PAN_ID,		// mac.panid
 		MAC_ANCHOR_ID,	// mac.dest  	'A' 'W'
 		MAC_TAG_ID,		// mac.source	'E' 'V'
-		FUNC_RANGE_REQU,		// functionCode
+		FUNC_RANGE_POLL,		// functionCode
 		0x0000			// mac_cs
 		};
 

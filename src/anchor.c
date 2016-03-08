@@ -184,7 +184,7 @@ void anchor_run(void) {
 			rx_header = cph_deca_read_frame(rx_buffer, &frame_len);
 
 			// Look for Poll message
-			if (rx_header->functionCode == FUNC_RANGE_REQU) {
+			if (rx_header->functionCode == FUNC_RANGE_POLL) {
 				uint32 resp_tx_time;
 
 				/* Retrieve poll reception timestamp. */
