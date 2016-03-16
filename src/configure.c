@@ -260,8 +260,9 @@ static bool configure_parameters(void) {
 		TRACE("===============\r\n");
 		TRACE("ENTER x to exit to Main Menu\r\n");
 		TRACE("0) g_sender_period_ms %d\r\n", cph_config->sender_period);
-		TRACE("1) pan_id 0x%02X\r\n", cph_config->panid);
-		TRACE("2) short_id 0x%02X\r\n", cph_config->shortid);
+		TRACE("0) g_sender_target 0x%04X\r\n", cph_config->sender_target);
+		TRACE("2) pan_id 0x%02X\r\n", cph_config->panid);
+		TRACE("3) short_id 0x%02X\r\n", cph_config->shortid);
 		TRACE("\r\n> ");
 
 		choice = getchar() & 0xFF;
@@ -291,11 +292,17 @@ static bool configure_parameters(void) {
 			}
 		} else if (choice == '1') {
 			if (sscanf(buffer, "%x", &hex) == 1) {
-				cph_config->panid = 0xffff & hex;
+				cph_config->sender_target = 0xffff & hex;
 			} else {
 				valid = false;
 			}
 		} else if (choice == '2') {
+			if (sscanf(buffer, "%x", &hex) == 1) {
+				cph_config->panid = 0xffff & hex;
+			} else {
+				valid = false;
+			}
+		} else if (choice == '3') {
 			if (sscanf(buffer, "%x", &hex) == 1) {
 				cph_config->shortid = 0xffff & hex;
 			} else {

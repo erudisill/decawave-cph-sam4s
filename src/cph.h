@@ -9,12 +9,13 @@
 #define SRC_CPH_H_
 
 #define FW_MAJOR				0x01
-#define FW_MINOR				0x01
+#define FW_MINOR				0x02
 
-//#define ANCHOR
+#define ANCHOR
+//#define COORDINATOR
 //#define TAG
 //#define SENDER
-#define LISTENER
+//#define LISTENER
 
 #define TRACE(...)				printf(__VA_ARGS__)
 
@@ -40,6 +41,7 @@ typedef struct PACKED {
 	dwt_config_t dwt_config;
 	uint8_t mode;
 	uint32_t sender_period;
+	uint16_t sender_target;
 } cph_config_t;
 
 

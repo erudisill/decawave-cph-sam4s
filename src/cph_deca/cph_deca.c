@@ -45,6 +45,24 @@ uint32_t cph_deca_send_delayed() {
 	return status_reg;
 }
 
+uint32_t cph_deca_send_delayed_response_expected() {
+	uint32_t status_reg;
+
+	int result = dwt_starttx(DWT_START_TX_DELAYED | DWT_RESPONSE_EXPECTED);
+	if (result == DWT_SUCCESS) {
+		status_reg = cph_deca_wait_for_tx_finished();
+		dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_TXFRS);
+		// Frame sent, now wait for response
+		status_reg = cph_deca_wait_for_rx_finished();
+		dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_TXFRS);
+	} else {
+		TRACE("ERROR: dwt_starttx response returned %d - too late!\r\n", result);
+	}
+	frame_seq_nb++;
+
+	return status_reg;
+}
+
 uint32_t cph_deca_send_response_expected() {
 	uint32_t status_reg;
 
@@ -100,5 +118,5 @@ void cph_deca_init_network(uint16_t panid, uint16_t shortid) {
 	// Configure network parameters
 	dwt_setpanid(panid);
 	dwt_setaddress16(shortid);
-//	dwt_enableframefilter(DWT_FF_DATA_EN);
+	dwt_enableframefilter(DWT_FF_DATA_EN);
 }

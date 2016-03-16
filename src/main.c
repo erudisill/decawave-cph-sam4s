@@ -8,27 +8,6 @@ uint16_t cph_coordid = 0;
 
 void configure_main(void);
 
-//static void init_config(void) {
-//	cph_config->magic[0] = 'C';
-//	cph_config->magic[1] = 'P';
-//	cph_config->magic[2] = 'H';
-//	cph_config->magic[3] = 'T';
-//	cph_config->fw_major = FW_MAJOR;
-//	cph_config->fw_minor = FW_MINOR;
-//	cph_config->hw_major = BOARD_REV_MAJOR;
-//	cph_config->hw_minor = BOARD_REV_MINOR;
-//	cph_config->panid = MAC_PAN_ID;
-//	cph_config->shortid = 0x1234;
-//
-//	TRACE("HW:%2X.%02X  FW:%2X.%02X  PAN_ID:%04X  SHORT_ID:%04X\r\n",
-//			cph_config->hw_major,
-//			cph_config->hw_minor,
-//			cph_config->fw_major,
-//			cph_config->fw_minor,
-//			cph_config->panid,
-//			cph_config->shortid);
-//}
-
 static void init_config(void) {
 	bool do_reset = false;
 
@@ -58,6 +37,8 @@ static void init_config(void) {
 
 #if defined(ANCHOR)
 		cph_config->mode = CPH_MODE_ANCHOR;
+#elif defined(COORDINATOR)
+		cph_config->mode = CPH_MODE_COORD;
 #elif defined(TAG)
 		cph_config->mode = CPH_MODE_TAG;
 #elif defined(LISTENER)
@@ -108,8 +89,6 @@ void print_greeting() {
 
 int main(void) {
 
-
-
 	sysclk_init();
 	board_init();
 
@@ -140,11 +119,11 @@ int main(void) {
 	cph_deca_spi_init();
 
 	if (cph_config->mode == CPH_MODE_ANCHOR) {
-		anchor_run();
+		twr_anchor_run();
 	} else if (cph_config->mode == CPH_MODE_COORD) {
-		anchor_run();
+		twr_anchor_run();
 	} else if (cph_config->mode == CPH_MODE_TAG) {
-		tag_run();
+		twr_tag_run();
 	} else if (cph_config->mode == CPH_MODE_LISTENER) {
 		listener_run();
 	} else if (cph_config->mode == CPH_MODE_SENDER) {

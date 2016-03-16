@@ -1,18 +1,17 @@
 /*
+ * twr_tag.c
  *
- * tag.c
- *  Created on: Dec 9, 2015
+ *  Created on: Mar 15, 2016
  *      Author: ericrudisill
  */
 
-// Disable in favor of TWR tag
-#if 0
 
 #include <stdio.h>
 #include <string.h>
 
 #include <cph.h>
-#include <cph_deca_port.h>
+#include <cph_deca.h>
+#include <cph_deca_range.h>
 #include <deca_device_api.h>
 #include <deca_regs.h>
 #include <deca_sleep.h>
@@ -20,16 +19,6 @@
 #define ANCHOR_ID		0x616A
 
 /* Frames used in the ranging process.  */
-static cph_deca_msg_range_request_t tx_poll_msg = {
-MAC_FC,			// mac.ctl - data frame, frame pending, pan id comp, short dest, short source
-		0,				// mac.seq
-		MAC_PAN_ID,		// mac.panid
-		MAC_ANCHOR_ID,	// mac.dest  	'A' 'W'
-		MAC_TAG_ID,		// mac.source	'E' 'V'
-		FUNC_RANGE_POLL,		// functionCode
-		0x0000			// mac_cs
-		};
-
 static cph_deca_msg_discover_announce_t tx_discover_msg = {
 MAC_FC,			// mac.ctl - data frame, frame pending, pan id comp, short dest, short source
 		0,				// mac.seq
@@ -49,7 +38,6 @@ MAC_FC,			// mac.ctl - data frame, frame pending, pan id comp, short dest, short
 		FUNC_PAIR_RESP,		// functionCode
 		0x0000			// mac_cs
 		};
-
 
 static cph_deca_msg_range_report_t tx_range_results_msg = {
 MAC_FC,			// mac.ctl - data frame, frame pending, pan id comp, short dest, short source
@@ -77,73 +65,15 @@ static uint8 rx_buffer[CPH_MAX_MSG_SIZE];
 /* Hold copy of status register state here for reference, so reader can examine it at a breakpoint. */
 static uint32 status_reg = 0;
 
-/* Hold copies of computed time of flight and distance here for reference, so reader can examine it at a breakpoint. */
-static double tof;
-
-static int range(cph_deca_anchor_range_t * range) {
-	int result = CPH_OK;
-
-	dwt_setrxaftertxdelay(POLL_TX_TO_RESP_RX_DLY_UUS);
-	dwt_setrxtimeout(RESP_RX_TIMEOUT_UUS);
-
-	// Setup POLL frame to request to range with anchor
-	tx_poll_msg.header.dest = range->shortid;
-
-	cph_deca_load_frame((cph_deca_msg_header_t*)&tx_poll_msg, sizeof(tx_poll_msg));
-	status_reg = cph_deca_send_response_expected();
-
-	if (status_reg & SYS_STATUS_RXFCG) {
-		uint32 frame_len;
-		cph_deca_msg_header_t * rx_header;
-
-		// A frame has been received, read it into the local buffer.
-		rx_header = cph_deca_read_frame(rx_buffer, &frame_len);
-		if (rx_header) {
-			// If valid response, calculate distance
-			if (rx_header->functionCode == 0xE1) {
-				uint32 poll_tx_ts, resp_rx_ts, poll_rx_ts, resp_tx_ts;
-				int32 rtd_init, rtd_resp;
-
-				// Retrieve poll transmission and response reception timestamps.
-				poll_tx_ts = dwt_readtxtimestamplo32();
-				resp_rx_ts = dwt_readrxtimestamplo32();
-
-				// Get timestamps embedded in response message.
-				poll_rx_ts = ((cph_deca_msg_range_response_t*) (rx_header))->requestRxTs;
-				resp_tx_ts = ((cph_deca_msg_range_response_t*) (rx_header))->responseTxTs;
-
-				// Compute time of flight and distance.
-				rtd_init = resp_rx_ts - poll_tx_ts;
-				rtd_resp = resp_tx_ts - poll_rx_ts;
-
-				tof = ((rtd_init - rtd_resp) / 2.0) * DWT_TIME_UNITS;
-				range->range = tof * SPEED_OF_LIGHT;
-
-				range->range_avg -= (range->range_avg / RANGE_SAMPLES_AVG);
-				range->range_avg += (range->range / RANGE_SAMPLES_AVG);
-			} else {
-				result = CPH_BAD_FRAME;
-			}
-		} else {
-			result = CPH_BAD_LENGTH;
-		}
-	} else {
-		// Clear RX error events in the DW1000 status register.
-		dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_ALL_RX_ERR);
-		result = CPH_ERROR;
-	}
-
-	return result;
-}
-
 static int discover(int idx) {
 	int result = CPH_OK;
 
 	dwt_setrxaftertxdelay(0);
-	dwt_setrxtimeout(600);
+//	dwt_setrxtimeout(600);
+	dwt_setrxtimeout(RESP_RX_TIMEOUT_UUS * 2);
 
 	// Broadcast anchor discovery request
-	cph_deca_load_frame((cph_deca_msg_header_t*)&tx_discover_msg, sizeof(tx_discover_msg));
+	cph_deca_load_frame((cph_deca_msg_header_t*) &tx_discover_msg, sizeof(tx_discover_msg));
 	status_reg = cph_deca_send_response_expected();
 
 	if (status_reg & SYS_STATUS_RXFCG) {
@@ -160,21 +90,21 @@ static int discover(int idx) {
 
 				// Now send the pair response back
 				tx_pair_msg.header.dest = shortid;
-				cph_deca_load_frame((cph_deca_msg_header_t*)&tx_pair_msg, sizeof(tx_pair_msg));
+				cph_deca_load_frame((cph_deca_msg_header_t*) &tx_pair_msg, sizeof(tx_pair_msg));
 				cph_deca_send_immediate();
 
-                // Grab the coordinator id
-                if (((cph_deca_msg_discover_reply_t*) rx_buffer)->coordid != cph_coordid) {
-                	cph_coordid = ((cph_deca_msg_discover_reply_t*) rx_buffer)->coordid;
-                	printf("coordinator discovered at %04X\r\n", cph_coordid);
-                }
+				// Grab the coordinator id
+				if (((cph_deca_msg_discover_reply_t*) rx_buffer)->coordid != cph_coordid) {
+					cph_coordid = ((cph_deca_msg_discover_reply_t*) rx_buffer)->coordid;
+					printf("coordinator discovered at %04X\r\n", cph_coordid);
+				}
 
-                // Check for duplicate
-				for (int i=0;i<ANCHORS_MIN;i++) {
+				// Check for duplicate
+				for (int i = 0; i < ANCHORS_MIN; i++) {
 					if (anchors[i].shortid == shortid) {
-		                printf("shortid %04X already exists in anchors[%d]\r\n", shortid, i);
-		                result = CPH_DUPLICATE;
-		                break;
+						printf("shortid %04X already exists in anchors[%d]\r\n", shortid, i);
+						result = CPH_DUPLICATE;
+						break;
 					}
 				}
 
@@ -191,11 +121,6 @@ static int discover(int idx) {
 			result = CPH_BAD_LENGTH;
 		}
 	} else {
-
-		//status_reg = dwt_read32bitreg(SYS_STATUS_ID);
-		uint32_t rf_status = dwt_read32bitoffsetreg(RF_CONF_ID, RF_STATUS_OFFSET);
-		printf("discover: status_reg %08X\trf_status %08X\r\n", status_reg, rf_status);
-
 		// Clear RX error events in the DW1000 status register.
 		dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_ALL_RX_ERR);
 		result = CPH_ERROR;
@@ -230,7 +155,7 @@ void refresh_anchors(void) {
 			anchor_refresh_ts = cph_get_millis();
 		}
 
-		for (int i=0;i<ANCHORS_MIN;i++) {
+		for (int i = 0; i < ANCHORS_MIN; i++) {
 			if (anchors_status & (1 << i)) {
 				int result = discover(i);
 				if (result == CPH_OK) {
@@ -247,9 +172,9 @@ void refresh_anchors(void) {
 }
 
 static void send_ranges(int tries) {
-	printf("%d\t%04X\t", tries,cph_coordid);
+	printf("%d\t%04X\t", tries, cph_coordid);
 	for (int i = 0; i < ANCHORS_MIN; i++) {
-		printf("%04X: %3.2f m (%3.2f m)\t", anchors[i].shortid, anchors[i].range, anchors[i].range_avg);
+		printf("%04X: %3.2f m\t", anchors[i].shortid, anchors[i].range);
 	}
 	printf("\r\n");
 
@@ -259,23 +184,28 @@ static void send_ranges(int tries) {
 		tx_range_results_msg.numranges = ANCHORS_MIN;
 		memcpy(&tx_range_results_msg.ranges[0], &anchors[0], sizeof(cph_deca_anchor_range_t) * ANCHORS_MIN);
 
-		cph_deca_load_frame((cph_deca_msg_header_t*)&tx_range_results_msg, sizeof(tx_range_results_msg));
+		cph_deca_load_frame((cph_deca_msg_header_t*) &tx_range_results_msg, sizeof(tx_range_results_msg));
 		cph_deca_send_immediate();
 	}
 }
 
 
-void tag_run(void) {
+void twr_tag_run(void) {
+	uint32_t start_ms, elapsed_ms, wait_ms;
 
 	// Setup DECAWAVE
 	cph_deca_init_device();
 	cph_deca_init_network(cph_config->panid, cph_config->shortid);
 
 	// Set our short id in common messages
-	tx_poll_msg.header.source = cph_config->shortid;
 	tx_discover_msg.header.source = cph_config->shortid;
+	tx_discover_msg.header.panid = cph_config->panid;
+
 	tx_pair_msg.header.source = cph_config->shortid;
+	tx_pair_msg.header.panid = cph_config->panid;
+
 	tx_range_results_msg.header.source = cph_config->shortid;
+	tx_range_results_msg.header.panid = cph_config->panid;
 
 	// First, discover anchors
 	uint32_t anchor_refresh_ts = 0;
@@ -287,6 +217,8 @@ void tag_run(void) {
 
 		int ranges_countdown = MAX_RANGES_BEFORE_POLL_TIMEOUT;
 		anchors_status = ANCHORS_MASK;
+
+		start_ms = cph_get_millis();
 
 		while (anchors_status && (--ranges_countdown)) {
 
@@ -304,7 +236,7 @@ void tag_run(void) {
 			for (int i = 0; i < ANCHORS_MIN; i++) {
 				if (anchors_status & (1 << i)) {
 					anchors[i].range = 0;
-					int result = range(&anchors[i]);
+					int result = cph_deca_range(&anchors[i], rx_buffer);
 
 					if (result == CPH_OK) {
 						anchors_status &= (~(1 << i));
@@ -319,14 +251,17 @@ void tag_run(void) {
 
 		if (ranges_countdown) {
 			send_ranges(MAX_RANGES_BEFORE_POLL_TIMEOUT - ranges_countdown);
-		}
-		else {
+		} else {
 			printf("ranges_countdown expired!\r\n");
 		}
 
 		// Execute a delay between ranging exchanges.
-		deca_sleep(POLL_DELAY_MS);
+		elapsed_ms = cph_get_millis() - start_ms;
+		wait_ms = POLL_DELAY_MS - elapsed_ms;
+		if (wait_ms > POLL_DELAY_MS)
+			wait_ms = POLL_DELAY_MS;
+		deca_sleep(wait_ms);
 	}
 }
 
-#endif
+

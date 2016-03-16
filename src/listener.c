@@ -57,6 +57,9 @@ static void rxcallback(const dwt_callback_data_t *rxd) {
 		}
 	}
 	else {
+		dwt_readrxdata(rx_buffer, 20, 0);
+		frame_len = 20;
+
 		trx_signal = SIGNAL_ERR;
 		error_status_reg = rxd->status;
 	}
@@ -74,22 +77,26 @@ void listener_run(void) {
 
 
 
-	// Setup DW1000
-	dwt_txconfig_t txconfig;
+//	// Setup DW1000
+//	dwt_txconfig_t txconfig;
+//
+//	// Setup DECAWAVE
+//	reset_DW1000();
+//	spi_set_rate_low();
+//	dwt_initialise(DWT_LOADUCODE);
+//	spi_set_rate_high();
+//
+//	dwt_configure(&cph_config->dwt_config);
+//
+//	dwt_setpanid(0x4350);
+//	dwt_setaddress16(0x1234);
+//
+//	// Clear CLKPLL_LL
+//	dwt_write32bitreg(SYS_STATUS_ID, 0x02000000);
 
-	// Setup DECAWAVE
-	reset_DW1000();
-	spi_set_rate_low();
-	dwt_initialise(DWT_LOADUCODE);
-	spi_set_rate_high();
+	cph_deca_init_device();
+	cph_deca_init_network(cph_config->panid, cph_config->shortid);
 
-	dwt_configure(&cph_config->dwt_config);
-
-	dwt_setpanid(0x4350);
-	dwt_setaddress16(0x1234);
-
-	// Clear CLKPLL_LL
-	dwt_write32bitreg(SYS_STATUS_ID, 0x02000000);
 
 	uint32_t id = dwt_readdevid();
 	printf("Device ID: %08X\r\n", id);
@@ -125,7 +132,12 @@ void listener_run(void) {
 			dwt_rxenable(0);
 		}
 		else if(trx_signal == SIGNAL_ERR) {
-			printf("ERROR: %08X\r\n", error_status_reg);
+//			printf("ERROR: %08X\r\n", error_status_reg);
+			printf("[ERR %08X] %d - ", error_status_reg, frame_len);
+			for (int i = 0; i < frame_len; i++) {
+				printf("%02X ", rx_buffer[i]);
+			}
+			printf("\r\n");
 			trx_signal = SIGNAL_EMPTY;
 			dwt_rxenable(0);
 		}

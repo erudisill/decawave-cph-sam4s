@@ -24,28 +24,36 @@ void sender_run(void) {
 	uint32_t elapsed = 0;
 	uint32_t count = 0;
 
-	// Setup DW1000
-	dwt_txconfig_t txconfig;
+//	// Setup DW1000
+//	dwt_txconfig_t txconfig;
+//
+//	// Setup DECAWAVE
+//	reset_DW1000();
+//	spi_set_rate_low();
+//	dwt_initialise(DWT_LOADUCODE);
+//	spi_set_rate_high();
+//
+//	dwt_configure(&cph_config->dwt_config);
+//
+//	dwt_setpanid();
+//	dwt_setaddress16(0x1234);
+//
+//	// Clear CLKPLL_LL
+//	dwt_write32bitreg(SYS_STATUS_ID, 0x02000000);
 
-	// Setup DECAWAVE
-	reset_DW1000();
-	spi_set_rate_low();
-	dwt_initialise(DWT_LOADUCODE);
-	spi_set_rate_high();
+	cph_deca_init_device();
+	cph_deca_init_network(cph_config->panid, cph_config->shortid);
 
-	dwt_configure(&cph_config->dwt_config);
-
-	dwt_setpanid(0x4350);
-	dwt_setaddress16(0x1234);
-
-	// Clear CLKPLL_LL
-	dwt_write32bitreg(SYS_STATUS_ID, 0x02000000);
 
 	uint32_t id = dwt_readdevid();
 	printf("Device ID: %08X\r\n", id);
 
 	uint8_t seq = 0;
 	uint32_t status_reg;
+
+	tx_discover_msg.header.panid = cph_config->panid;
+	tx_discover_msg.header.source = cph_config->shortid;
+//	tx_discover_msg.header.dest = cph_config->sender_target;
 
 	while (1) {
 

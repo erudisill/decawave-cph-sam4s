@@ -5,6 +5,10 @@
  *      Author: ericrudisill
  */
 
+// Disable in favor of TWR anchor
+#if 0
+
+
 #include <stdio.h>
 #include <string.h>
 
@@ -294,3 +298,5 @@ static uint64 get_rx_timestamp_u64(void) {
 	}
 	return ts;
 }
+
+#endif
