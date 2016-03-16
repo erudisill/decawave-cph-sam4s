@@ -5,11 +5,14 @@
  *      Author: ericrudisill
  */
 
+#include <string.h>
 #include <cph_deca.h>
 #include <deca_regs.h>
+#include <cph_queue.h>
 
 static uint8 frame_seq_nb = 0;
-
+static cph_queue_info_t event_queue;
+static cph_deca_event_t events[CPH_MAX_EVENTS];
 
 void cph_deca_load_frame(cph_deca_msg_header_t * hdr, uint16_t size) {
 	// Write message to frame buffer
@@ -119,4 +122,67 @@ void cph_deca_init_network(uint16_t panid, uint16_t shortid) {
 	dwt_setpanid(panid);
 	dwt_setaddress16(shortid);
 	dwt_enableframefilter(DWT_FF_DATA_EN);
+}
+
+
+void cph_deca_isr_handler(uint32_t id, uint32_t mask) {
+	do {
+		dwt_isr();
+	} while (cph_deca_isr_is_detected() == 1);
+}
+
+void cph_deca_isr_init(void) {
+
+	pio_configure_pin(DW_IRQ_IDX, DW_IRQ_FLAGS);
+	pio_pull_down(DW_IRQ_PIO, DW_IRQ_MASK, true);
+	pio_handler_set(DW_IRQ_PIO, DW_IRQ_PIO_ID, DW_IRQ_MASK, DW_IRQ_ATTR, cph_deca_isr_handler);
+	pio_enable_interrupt(DW_IRQ_PIO, DW_IRQ_MASK);
+
+	pio_handler_set_priority(DW_IRQ_PIO, DW_IRQ_IRQ, 0);
+
+	pmc_enable_periph_clk(DW_IRQ_PIO_ID);
+}
+
+void cph_deca_isr_configure(void) {
+	cph_queue_init(&event_queue, sizeof(cph_deca_event_t), CPH_MAX_EVENTS, events);
+
+	dwt_setcallbacks(0, cph_deca_rxcallback);
+//	dwt_setinterrupt(
+//			DWT_INT_TFRS | DWT_INT_RFCG
+//					| ( DWT_INT_ARFE | DWT_INT_RFSL | DWT_INT_SFDT | DWT_INT_RPHE | DWT_INT_RFCE | DWT_INT_RFTO /*| DWT_INT_RXPTO*/),
+//			1);
+	dwt_setinterrupt(
+			DWT_INT_TFRS | DWT_INT_RFCG
+					| ( DWT_INT_RFTO ),
+			1);
+}
+
+void cph_deca_rxcallback(const dwt_callback_data_t *rxd) {
+	cph_deca_event_t ev;
+
+	memcpy(&ev.info, rxd, sizeof(dwt_callback_data_t));
+
+	if (rxd->event == DWT_SIG_RX_OKAY) {
+//		dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_RXFCG);
+		if (rxd->datalength <= CPH_MAX_MSG_SIZE) {
+			ev.status = CPH_EVENT_RCV;
+			dwt_readrxdata(ev.data, rxd->datalength, 0);
+			//TODO: Capture timestamp here and stuff in event struct
+			cph_queue_push(&event_queue, &ev);
+			dwt_rxenable(0);
+		}
+	}
+	else {
+		ev.status = CPH_EVENT_ERR;
+		cph_queue_push(&event_queue, &ev);
+		// Auto enable should be on, so don't bother dwt_rxenable
+	}
+}
+
+bool cph_deca_get_event(cph_deca_event_t * event) {
+	if (cph_queue_pop(&event_queue, event) == CPH_QUEUE_OK) {
+		return true;
+	} else {
+		return false;
+	}
 }

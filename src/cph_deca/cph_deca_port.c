@@ -42,11 +42,13 @@ void cph_deca_spi_set_baud(uint32_t baud) {
 
 int cph_deca_spi_write(uint16_t headerLength, const uint8_t *headerBuffer, uint32_t bodyLength, const uint8_t *bodyBuffer) {
 	status_code_t result = STATUS_OK;
+	uint32_t timeout = SPI_TIMEOUT;
 
 	//We don't care about the values stored here
 	uint8_t pcs = DW_CHIP_SELECT;
 	uint16_t data;
 
+	cpu_irq_enter_critical();
 
 	for(int i = 0; i < headerLength; i++)
 	{
@@ -61,16 +63,25 @@ int cph_deca_spi_write(uint16_t headerLength, const uint8_t *headerBuffer, uint3
 		spi_read(DW_SPI, &data, &pcs);
 	}
 
-	while (spi_is_tx_empty(DW_SPI) == 0) ;
+	while (spi_is_tx_empty(DW_SPI) == 0) {
+		if (!timeout--) {
+			return ERR_IO_ERROR;
+		}
+	}
+
+	cpu_irq_leave_critical();
 
 	return result;
 }
 
 int cph_deca_spi_read(uint16_t headerLength, const uint8_t *headerBuffer, uint32_t readlength, uint8_t *readBuffer) {
 	status_code_t result = STATUS_OK;
+	uint32_t timeout = SPI_TIMEOUT;
 
 	uint8_t pcs = DW_CHIP_SELECT;
 	uint16_t data;
+
+	cpu_irq_enter_critical();
 
 	for(int i = 0; i < headerLength; i++)
 	{
@@ -86,7 +97,13 @@ int cph_deca_spi_read(uint16_t headerLength, const uint8_t *headerBuffer, uint32
 		readBuffer[i] = data & 0xFF;
 	}
 
-	while (spi_is_tx_empty(DW_SPI) == 0) ;
+	while (spi_is_tx_empty(DW_SPI) == 0) {
+		if (!timeout--) {
+			return ERR_IO_ERROR;
+		}
+	}
+
+	cpu_irq_leave_critical();
 
 	return result;
 }
@@ -125,6 +142,7 @@ void cph_deca_isr_mutex_off(decaIrqStatus_t s) {
 }
 
 void cph_deca_isr(void) {
+	//TODO: Put some kind of timeout here in case of latched interrupt
 	do {
 		dwt_isr();
 	} while (cph_deca_isr_is_detected() == 1);

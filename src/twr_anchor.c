@@ -206,38 +206,17 @@ static double range_with_anchor(uint16_t shortid, uint16_t reps, uint16_t period
 	return accum / count;
 }
 
-//static bool handle_signal(void) {
-//	bool result = true;
-//	int shortid_a, shortid_b;
-//	int x, y;
-//
-//	TRACE("Command: %s\r\n", cph_rx_buff);
-//
-//	if (cph_rx_buff[0] == 'r') {
-//		if (sscanf(&cph_rx_buff[2], "%x %x %d %d", &shortid_a, &shortid_b, &x, &y) != 4) {
-//			TRACE("BAD FORMAT\r\n");
-//		} else {
-//			// send message
-//			dwt_forcetrxoff();
-//			tx_survey_request.header.dest = shortid_a;
-//			tx_survey_request.target_short_id = shortid_b;
-//			tx_survey_request.reps = x;
-//			tx_survey_request.periodms = y;
-//			cph_deca_load_frame(&tx_survey_request.header, sizeof(tx_survey_request));
-//			cph_deca_send_immediate();
-//		}
-//	}
-//	else {
-//		result = false;
-//	}
-//
-//	cph_clear_rx_buff();
-//	return result;
-//}
+
+
+
 
 void twr_anchor_run(void) {
 	uint32_t announce_coord_ts = 0;
 	uint32_t elapsed = 0;
+
+	// Setup interrupt for DW1000 (disable during configuration)
+	cph_deca_isr_init();
+	cph_deca_isr_disable();
 
 	// Setup DW1000
 	cph_deca_init_device();
@@ -271,6 +250,35 @@ void twr_anchor_run(void) {
 		announce_coord(COORD_ANNOUNCE_START_BURST);
 	}
 
+	// Attach DW interrupt events and callbacks and enable local interrupt pin
+	cph_deca_isr_configure();
+	cph_deca_isr_enable();
+
+#if 1
+
+	dwt_setrxtimeout(0);
+	dwt_setautorxreenable(1);
+	dwt_rxenable(0);
+
+	cph_deca_event_t event;
+
+	while (1) {
+		if (cph_deca_get_event(&event)) {
+
+			if (event.status == CPH_EVENT_RCV) {
+				TRACE("[RCV] ");
+				for (int i = 0; i < event.info.datalength; i++)
+					TRACE("%02X ", event.data[i]);
+				TRACE("\r\n");
+
+			} else if (event.status == CPH_EVENT_ERR) {
+				TRACE("[ERR] %08X\r\n", event.info.status);
+			}
+		}
+	}
+
+
+#else
 	/* Loop forever responding to ranging requests. */
 	while (1) {
 
@@ -461,6 +469,7 @@ void twr_anchor_run(void) {
 			}
 		}
 	}
+#endif
 }
 
 /*! ------------------------------------------------------------------------------------------------------------------

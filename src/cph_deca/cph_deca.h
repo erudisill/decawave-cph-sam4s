@@ -133,6 +133,10 @@ enum {
 
 #define CPH_MAX_MSG_SIZE		128
 
+#define CPH_MAX_EVENTS			10
+#define CPH_EVENT_RCV		0xff
+#define CPH_EVENT_ERR		0xee
+
 #define PACKED	__attribute__((packed))
 
 typedef struct PACKED {
@@ -227,6 +231,13 @@ typedef struct PACKED {
 
 
 
+typedef struct PACKED {
+	dwt_callback_data_t info;
+	uint8_t status;
+	uint8_t data[CPH_MAX_MSG_SIZE];
+} cph_deca_event_t;
+
+
 
 inline uint32_t cph_deca_wait_for_tx_finished(void) {
 	uint32_t status_reg;
@@ -251,4 +262,10 @@ uint32_t cph_deca_send_delayed_response_expected();
 uint32_t cph_deca_send_response_expected();
 void cph_deca_init_device();
 void cph_deca_init_network(uint16_t panid, uint16_t shortid);
+void cph_deca_isr_handler(uint32_t id, uint32_t mask);
+void cph_deca_isr_init(void);
+void cph_deca_isr_configure(void) ;
+void cph_deca_rxcallback(const dwt_callback_data_t *rxd);
+bool cph_deca_get_event(cph_deca_event_t * event);
+
 #endif /* SRC_CPH_DECA_CPH_DECA_H_ */
