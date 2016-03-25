@@ -123,7 +123,8 @@ int cph_deca_range(cph_deca_anchor_range_t * range, uint8 * rx_buffer) {
 		}
 	} else {
 		// Clear RX error events in the DW1000 status register.
-		dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_ALL_RX_ERR);
+//		dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_ALL_RX_ERR);
+		dwt_write32bitreg(SYS_STATUS_ID, status_reg);
 		result = CPH_ERROR;
 	}
 

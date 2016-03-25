@@ -134,8 +134,10 @@ enum {
 #define CPH_MAX_MSG_SIZE		128
 
 #define CPH_MAX_EVENTS			10
-#define CPH_EVENT_RCV		0xff
-#define CPH_EVENT_ERR		0xee
+#define CPH_EVENT_NONE			0x00
+#define CPH_EVENT_RX			0x01
+#define CPH_EVENT_TX			0x02
+#define CPH_EVENT_ERR			0xee
 
 #define PACKED	__attribute__((packed))
 
@@ -234,25 +236,29 @@ typedef struct PACKED {
 typedef struct PACKED {
 	dwt_callback_data_t info;
 	uint8_t status;
+	uint64_t timestamp;
 	uint8_t data[CPH_MAX_MSG_SIZE];
 } cph_deca_event_t;
 
 
 
-inline uint32_t cph_deca_wait_for_tx_finished(void) {
-	uint32_t status_reg;
-	while (!((status_reg = dwt_read32bitreg(SYS_STATUS_ID)) & SYS_STATUS_TXFRS)) {
-	};
-	return status_reg;
-}
+//inline uint32_t cph_deca_wait_for_tx_finished(void) {
+//	uint32_t status_reg;
+//	while (!((status_reg = dwt_read32bitreg(SYS_STATUS_ID)) & SYS_STATUS_TXFRS)) {
+//	};
+//	return status_reg;
+//}
+//
+//inline uint32_t cph_deca_wait_for_rx_finished(void) {
+//	uint32_t status_reg;
+//	while (!((status_reg = dwt_read32bitreg(SYS_STATUS_ID)) & (SYS_STATUS_RXFCG | SYS_STATUS_ALL_RX_ERR))) {
+//	};
+//	return status_reg;
+//}
 
-inline uint32_t cph_deca_wait_for_rx_finished(void) {
-	uint32_t status_reg;
-	while (!((status_reg = dwt_read32bitreg(SYS_STATUS_ID)) & (SYS_STATUS_RXFCG | SYS_STATUS_ALL_RX_ERR))) {
-	};
-	return status_reg;
-}
-
+uint32_t cph_deca_wait_for_tx_finished(void);
+uint32_t cph_deca_wait_for_rx_finished(void);
+extern volatile uint8_t wait_event;
 
 void cph_deca_load_frame(cph_deca_msg_header_t * hdr, uint16_t size);
 cph_deca_msg_header_t * cph_deca_read_frame(uint8_t * rx_buffer, uint32_t *frame_len);
@@ -264,7 +270,8 @@ void cph_deca_init_device();
 void cph_deca_init_network(uint16_t panid, uint16_t shortid);
 void cph_deca_isr_handler(uint32_t id, uint32_t mask);
 void cph_deca_isr_init(void);
-void cph_deca_isr_configure(void) ;
+void cph_deca_isr_configure();
+void cph_deca_txcallback(const dwt_callback_data_t * txd);
 void cph_deca_rxcallback(const dwt_callback_data_t *rxd);
 bool cph_deca_get_event(cph_deca_event_t * event);
 

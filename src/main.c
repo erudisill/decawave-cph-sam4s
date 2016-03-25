@@ -100,7 +100,7 @@ int main(void) {
 	print_greeting();
 
 	// Blink LED for 5 seconds
-	pio_set_pin_high(LED_STATUS1_IDX);
+	pio_set_pin_high(LED_STATUS0_IDX);
 	for (int i = 0; i < (5 * 8); i++) {
 		uint8_t c = 0x00;
 		uart_read(CONSOLE_UART, &c);

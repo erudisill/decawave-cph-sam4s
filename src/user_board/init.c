@@ -54,7 +54,9 @@ void board_init(void)
 
 #ifdef CONF_BOARD_LEDS
 	pio_configure(PINS_LED0_PIO, PINS_LED0_TYPE, PINS_LED0_MASK, PINS_LED0_ATTR);
+#if !defined(REV_B_02)
 	pio_configure(PINS_LED1_PIO, PINS_LED1_TYPE, PINS_LED1_MASK, PINS_LED1_ATTR);
+#endif
 #endif
 
 #ifdef CONF_BOARD_UART_CONSOLE

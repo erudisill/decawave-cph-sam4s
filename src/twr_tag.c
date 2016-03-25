@@ -189,7 +189,7 @@ static void send_ranges(int tries) {
 	}
 }
 
-
+#if 0
 void twr_tag_run(void) {
 	uint32_t start_ms, elapsed_ms, wait_ms;
 
@@ -264,4 +264,91 @@ void twr_tag_run(void) {
 	}
 }
 
+#else
+
+void twr_tag_run(void) {
+	uint32_t start_ms, elapsed_ms, wait_ms;
+
+	// Setup interrupt for DW1000 (disable during configuration)
+	cph_deca_isr_init();
+	cph_deca_isr_disable();
+
+	// Setup DECAWAVE
+	cph_deca_init_device();
+	cph_deca_init_network(cph_config->panid, cph_config->shortid);
+
+	// Set our short id in common messages
+	tx_discover_msg.header.source = cph_config->shortid;
+	tx_discover_msg.header.panid = cph_config->panid;
+
+	tx_pair_msg.header.source = cph_config->shortid;
+	tx_pair_msg.header.panid = cph_config->panid;
+
+	tx_range_results_msg.header.source = cph_config->shortid;
+	tx_range_results_msg.header.panid = cph_config->panid;
+
+	// Attach DW interrupt events and callbacks and enable local interrupt pin
+	cph_deca_isr_configure();
+	cph_deca_isr_enable();
+
+	dwt_setautorxreenable(1);
+
+	// First, discover anchors
+	uint32_t anchor_refresh_ts = 0;
+	refresh_anchors();
+	anchor_refresh_ts = cph_get_millis();
+
+	// Poll loop
+	while (1) {
+
+		int ranges_countdown = MAX_RANGES_BEFORE_POLL_TIMEOUT;
+		anchors_status = ANCHORS_MASK;
+
+		start_ms = cph_get_millis();
+
+		while (anchors_status && (--ranges_countdown)) {
+
+			// Check for refresh of anchors
+			uint32_t elapsed = cph_get_millis() - anchor_refresh_ts;
+			if (elapsed > ANCHORS_REFRESH_INTERVAL) {
+				printf("Anchors refresh timeout.  anchors_status:%02X\r\n", anchors_status);
+				refresh_anchors();
+				anchor_refresh_ts = cph_get_millis();
+				// Since we refreshed the anchors, need to range again for ALL anchors during this poll
+				anchors_status = ANCHORS_MASK;
+			}
+
+			// Range each anchor once during this poll
+			for (int i = 0; i < ANCHORS_MIN; i++) {
+				if (anchors_status & (1 << i)) {
+					anchors[i].range = 0;
+					int result = cph_deca_range(&anchors[i], rx_buffer);
+
+					if (result == CPH_OK) {
+						anchors_status &= (~(1 << i));
+					}
+
+					deca_sleep(RNG_DELAY_MS);
+				}
+			}
+
+			deca_sleep(RNG_DELAY_MS);
+		}
+
+		if (ranges_countdown) {
+			send_ranges(MAX_RANGES_BEFORE_POLL_TIMEOUT - ranges_countdown);
+		} else {
+			printf("ranges_countdown expired!\r\n");
+		}
+
+		// Execute a delay between ranging exchanges.
+		elapsed_ms = cph_get_millis() - start_ms;
+		wait_ms = POLL_DELAY_MS - elapsed_ms;
+		if (wait_ms > POLL_DELAY_MS)
+			wait_ms = POLL_DELAY_MS;
+		deca_sleep(wait_ms);
+	}
+}
+
+#endif
 

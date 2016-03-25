@@ -14,6 +14,58 @@ static uint8 frame_seq_nb = 0;
 static cph_queue_info_t event_queue;
 static cph_deca_event_t events[CPH_MAX_EVENTS];
 
+volatile uint8_t wait_event = 0xff;
+
+static uint64_t get_rx_timestamp_u64(void) {
+	uint8 ts_tab[5];
+	uint64_t ts = 0;
+	int i;
+	dwt_readrxtimestamp(ts_tab);
+	for (i = 4; i >= 0; i--) {
+		ts <<= 8;
+		ts |= ts_tab[i];
+	}
+	return ts;
+}
+
+static uint64_t get_tx_timestamp_u64(void) {
+	uint8 ts_tab[5];
+	uint64_t ts = 0;
+	int i;
+	dwt_readtxtimestamp(ts_tab);
+	for (i = 4; i >= 0; i--) {
+		ts <<= 8;
+		ts |= ts_tab[i];
+	}
+	return ts;
+}
+
+uint32_t cph_deca_wait_for_tx_finished(void) {
+	uint32_t status_reg;
+	uint32_t start_ms = cph_get_millis();
+	uint32_t elapsed = 0;
+	while (cph_deca_isr_is_detected() == false) {
+		elapsed = cph_get_millis() - start_ms;
+		if (elapsed > 1000)
+			return 0;
+	}
+	status_reg = dwt_read32bitreg(SYS_STATUS_ID);
+	return status_reg;
+}
+
+uint32_t cph_deca_wait_for_rx_finished(void) {
+	uint32_t status_reg;
+	uint32_t start_ms = cph_get_millis();
+	uint32_t elapsed = 0;
+	while (cph_deca_isr_is_detected() == false) {
+		elapsed = cph_get_millis() - start_ms;
+		if (elapsed > 1000)
+			return 0;
+	}
+	status_reg = dwt_read32bitreg(SYS_STATUS_ID);
+	return status_reg;
+}
+
 void cph_deca_load_frame(cph_deca_msg_header_t * hdr, uint16_t size) {
 	// Write message to frame buffer
 	hdr->seq = frame_seq_nb;
@@ -66,12 +118,23 @@ uint32_t cph_deca_send_delayed_response_expected() {
 	return status_reg;
 }
 
+//uint32_t cph_deca_send_response_expected() {
+//	uint32_t status_reg;
+//
+//	dwt_starttx(DWT_START_TX_IMMEDIATE | DWT_RESPONSE_EXPECTED);
+//	status_reg = cph_deca_wait_for_rx_finished();
+//	dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_TXFRS);
+//	frame_seq_nb++;
+//
+//	return status_reg;
+//}
 uint32_t cph_deca_send_response_expected() {
 	uint32_t status_reg;
 
 	dwt_starttx(DWT_START_TX_IMMEDIATE | DWT_RESPONSE_EXPECTED);
-	status_reg = cph_deca_wait_for_rx_finished();
+	status_reg = cph_deca_wait_for_tx_finished();
 	dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_TXFRS);
+	status_reg = cph_deca_wait_for_rx_finished();
 	frame_seq_nb++;
 
 	return status_reg;
@@ -105,11 +168,6 @@ void cph_deca_init_device() {
 
 	dwt_configure(&cph_config->dwt_config);
 
-//	txconfig.PGdly = 0xC2;			// for channel 2
-//	txconfig.power = 0x07274767;	// smart power, channel 2, 64MHz
-//	dwt_setsmarttxpower(1);
-//	dwt_configuretxrf(&txconfig);
-
 	dwt_setrxantennadelay(RX_ANT_DLY);
 	dwt_settxantennadelay(TX_ANT_DLY);
 
@@ -125,10 +183,14 @@ void cph_deca_init_network(uint16_t panid, uint16_t shortid) {
 }
 
 
+//void cph_deca_isr_handler(uint32_t id, uint32_t mask) {
+//	do {
+//		dwt_isr();
+//	} while (cph_deca_isr_is_detected() == 1);
+//}
+
 void cph_deca_isr_handler(uint32_t id, uint32_t mask) {
-	do {
-		dwt_isr();
-	} while (cph_deca_isr_is_detected() == 1);
+	wait_event = 0x00;
 }
 
 void cph_deca_isr_init(void) {
@@ -143,10 +205,11 @@ void cph_deca_isr_init(void) {
 	pmc_enable_periph_clk(DW_IRQ_PIO_ID);
 }
 
-void cph_deca_isr_configure(void) {
+void cph_deca_isr_configure() {
 	cph_queue_init(&event_queue, sizeof(cph_deca_event_t), CPH_MAX_EVENTS, events);
 
-	dwt_setcallbacks(0, cph_deca_rxcallback);
+//	dwt_setcallbacks(cph_deca_txcallback, cph_deca_rxcallback);
+
 //	dwt_setinterrupt(
 //			DWT_INT_TFRS | DWT_INT_RFCG
 //					| ( DWT_INT_ARFE | DWT_INT_RFSL | DWT_INT_SFDT | DWT_INT_RPHE | DWT_INT_RFCE | DWT_INT_RFTO /*| DWT_INT_RXPTO*/),
@@ -157,19 +220,38 @@ void cph_deca_isr_configure(void) {
 			1);
 }
 
+
+
+void cph_deca_txcallback(const dwt_callback_data_t * txd) {
+	cph_deca_event_t ev;
+
+	memcpy(&ev.info, txd, sizeof(dwt_callback_data_t));
+
+	if (txd->event == DWT_SIG_TX_DONE) {
+		ev.status = CPH_EVENT_TX;
+		ev.timestamp = get_tx_timestamp_u64();
+		cph_queue_push(&event_queue, &ev);
+	}
+	else {
+		ev.status = CPH_EVENT_ERR;
+		cph_queue_push(&event_queue, &ev);
+		// Auto enable should be on, so don't bother dwt_rxenable
+	}
+
+	TRACE("%02X\r\n", ev.status);
+}
+
 void cph_deca_rxcallback(const dwt_callback_data_t *rxd) {
 	cph_deca_event_t ev;
 
 	memcpy(&ev.info, rxd, sizeof(dwt_callback_data_t));
 
 	if (rxd->event == DWT_SIG_RX_OKAY) {
-//		dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_RXFCG);
 		if (rxd->datalength <= CPH_MAX_MSG_SIZE) {
-			ev.status = CPH_EVENT_RCV;
+			ev.status = CPH_EVENT_RX;
 			dwt_readrxdata(ev.data, rxd->datalength, 0);
-			//TODO: Capture timestamp here and stuff in event struct
+			ev.timestamp = get_rx_timestamp_u64();
 			cph_queue_push(&event_queue, &ev);
-			dwt_rxenable(0);
 		}
 	}
 	else {
@@ -177,6 +259,9 @@ void cph_deca_rxcallback(const dwt_callback_data_t *rxd) {
 		cph_queue_push(&event_queue, &ev);
 		// Auto enable should be on, so don't bother dwt_rxenable
 	}
+
+	TRACE("%02X\r\n", ev.status);
+
 }
 
 bool cph_deca_get_event(cph_deca_event_t * event) {
