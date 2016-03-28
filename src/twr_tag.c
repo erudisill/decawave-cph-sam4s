@@ -269,6 +269,7 @@ void twr_tag_run(void) {
 void twr_tag_run(void) {
 	uint32_t start_ms, elapsed_ms, wait_ms;
 
+
 	// Setup interrupt for DW1000 (disable during configuration)
 	cph_deca_isr_init();
 	cph_deca_isr_disable();
@@ -297,6 +298,20 @@ void twr_tag_run(void) {
 	uint32_t anchor_refresh_ts = 0;
 	refresh_anchors();
 	anchor_refresh_ts = cph_get_millis();
+
+
+
+	dwt_configuresleep(DWT_PRESRV_SLEEP | DWT_CONFIG | 0x1800, DWT_WAKE_WK | DWT_SLP_EN);
+	rtt_init(RTT, 32);
+	NVIC_DisableIRQ(RTT_IRQn);
+	NVIC_ClearPendingIRQ(RTT_IRQn);
+	NVIC_SetPriority(RTT_IRQn, 0);
+	NVIC_EnableIRQ(RTT_IRQn);
+	rtt_enable_interrupt(RTT, RTT_MR_ALMIEN);
+	pmc_set_fast_startup_input(PMC_FSMR_RTTAL);
+
+
+
 
 	// Poll loop
 	while (1) {
@@ -346,7 +361,24 @@ void twr_tag_run(void) {
 		wait_ms = POLL_DELAY_MS - elapsed_ms;
 		if (wait_ms > POLL_DELAY_MS)
 			wait_ms = POLL_DELAY_MS;
-		deca_sleep(wait_ms);
+//		deca_sleep(wait_ms);
+
+
+		dwt_entersleep();
+		rtt_write_alarm_time(RTT, rtt_read_timer_value(RTT) + wait_ms);
+		pmc_sleep(SAM_PM_SMODE_WAIT);
+
+		pio_set_pin_high(DW_WAKEUP_PIO_IDX);
+		cph_millis_delay(1);
+		pio_set_pin_low(DW_WAKEUP_PIO_IDX);
+		cph_millis_delay(1);
+
+		//LAME: Something is lost on wakeup and the ranging code is bad.
+		//      Re-init/config "fixes" it, but is very heavy-handed.
+		cph_deca_init_device();
+		cph_deca_init_network(cph_config->panid, cph_config->shortid);
+
+
 	}
 }
 
