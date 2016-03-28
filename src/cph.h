@@ -11,9 +11,9 @@
 #define FW_MAJOR				0x01
 #define FW_MINOR				0x02
 
-#define ANCHOR
+//#define ANCHOR
 //#define COORDINATOR
-//#define TAG
+#define TAG
 //#define SENDER
 //#define LISTENER
 

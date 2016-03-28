@@ -96,4 +96,6 @@
 
 #include <flash_efc.h>
 
+#include <rtt.h>
+
 #endif // ASF_H

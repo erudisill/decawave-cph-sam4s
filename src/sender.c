@@ -18,6 +18,11 @@ MAC_FC,			// mac.ctl - data frame, frame pending, pan id comp, short dest, short
 		};
 
 
+
+void RTT_Handler(void) {
+	rtt_get_status(RTT);
+}
+
 void sender_run(void) {
 
 	uint32_t announce_coord_ts = 0;
@@ -55,6 +60,18 @@ void sender_run(void) {
 	tx_discover_msg.header.source = cph_config->shortid;
 //	tx_discover_msg.header.dest = cph_config->sender_target;
 
+	dwt_configuresleep(DWT_PRESRV_SLEEP | DWT_CONFIG, DWT_WAKE_WK | DWT_SLP_EN);
+
+//	rtt_init(RTT, 32768);
+	rtt_init(RTT, 32);
+	NVIC_DisableIRQ(RTT_IRQn);
+	NVIC_ClearPendingIRQ(RTT_IRQn);
+	NVIC_SetPriority(RTT_IRQn, 0);
+	NVIC_EnableIRQ(RTT_IRQn);
+	rtt_enable_interrupt(RTT, RTT_MR_ALMIEN);
+	pmc_set_fast_startup_input(PMC_FSMR_RTTAL);
+
+
 	while (1) {
 
 		printf("sending %d\r\n", count++);
@@ -71,6 +88,16 @@ void sender_run(void) {
 		};
 		dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_TXFRS);
 
-		cph_millis_delay(cph_config->sender_period);
+		dwt_entersleep();
+
+		rtt_write_alarm_time(RTT, rtt_read_timer_value(RTT) + 200);
+		pmc_sleep(SAM_PM_SMODE_WAIT);
+
+//		cph_millis_delay(cph_config->sender_period);
+
+		pio_set_pin_high(DW_WAKEUP_PIO_IDX);
+		cph_millis_delay(1);
+		pio_set_pin_low(DW_WAKEUP_PIO_IDX);
+		cph_millis_delay(10);
 	}
 }
