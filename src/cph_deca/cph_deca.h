@@ -34,8 +34,10 @@ void sender_run(void);
 #define POLL_DELAY_MS 	200
 
 /* Default antenna delay values for 64 MHz PRF. See NOTE 2 below. */
-#define TX_ANT_DLY 16436
-#define RX_ANT_DLY 16436
+//#define TX_ANT_DLY 16436
+//#define RX_ANT_DLY 16436
+#define TX_ANT_DLY 16565
+#define RX_ANT_DLY 16565
 
 
 
@@ -69,17 +71,18 @@ void sender_run(void);
 
 
 // Min Number of anchors to range with - if this changes, so should ANCHORS_MASK
-//#define ANCHORS_MIN		4
+#define ANCHORS_MIN		4
 //#define ANCHORS_MIN		3
-#define ANCHORS_MIN		1
+//#define ANCHORS_MIN		1
 
 // Used for tracking status of anchor ids (by bitmask) during discovery and poll
-//#define ANCHORS_MASK	0x0F
+#define ANCHORS_MASK	0x0F
 //#define ANCHORS_MASK	0x07
-#define ANCHORS_MASK	0x01
+//#define ANCHORS_MASK	0x01
 
 // Anchor refresh interval
-#define ANCHORS_REFRESH_INTERVAL	10000
+//#define ANCHORS_REFRESH_INTERVAL	10000
+#define ANCHORS_REFRESH_INTERVAL	60000
 
 // Coord announce startup burst repeat count
 #define COORD_ANNOUNCE_START_BURST	10
@@ -88,7 +91,7 @@ void sender_run(void);
 #define COORD_ANNOUNCE_INTERVAL		7000
 
 // Max ranges before poll timeout - keeps from blasting radio when an anchor is not responding
-#define MAX_RANGES_BEFORE_POLL_TIMEOUT	5
+#define MAX_RANGES_BEFORE_POLL_TIMEOUT	20
 
 // Max number of tags to pair with
 #define MAX_TAGS		32

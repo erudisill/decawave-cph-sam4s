@@ -65,6 +65,37 @@ static uint8 rx_buffer[CPH_MAX_MSG_SIZE];
 /* Hold copy of status register state here for reference, so reader can examine it at a breakpoint. */
 static uint32 status_reg = 0;
 
+
+
+static void sleep_all(uint32_t wait_ms) {
+	dwt_entersleep();
+
+#if 0
+	uint32_t rttv = rtt_read_timer_value(RTT);
+	uint32_t wait_value = rttv + wait_ms;
+
+//	TRACE("wait: %d %d\r\n", rttv, wait_value);
+	cph_millis_delay(1);
+
+	rtt_write_alarm_time(RTT, wait_value);
+	pmc_sleep(SAM_PM_SMODE_WAIT);
+
+	// update our millis counter
+	g_cph_millis += wait_ms;
+#else
+	cph_millis_delay(wait_ms);
+#endif
+
+	pio_set_pin_high(DW_WAKEUP_PIO_IDX);
+	cph_millis_delay(1);
+	pio_set_pin_low(DW_WAKEUP_PIO_IDX);
+	cph_millis_delay(1);
+
+	cph_deca_init_device();
+	cph_deca_init_network(cph_config->panid, cph_config->shortid);
+}
+
+
 static int discover(int idx) {
 	int result = CPH_OK;
 
@@ -139,12 +170,21 @@ void init_anchors(void) {
 }
 
 void refresh_anchors(void) {
+	int panic_count = 0;
 
 	init_anchors();
 
 	// Discover anchors
 	uint32_t anchor_refresh_ts = 0;
 	while (anchors_status) {
+
+		panic_count++;
+		if (panic_count > 10) {
+			TRACE("PANIC! Can't find enough anchors. Sleeping.\r\n");
+			sleep_all(5 * 1000);
+			panic_count = 0;
+		}
+
 		printf("Discovering anchors .. anchors_status:%02X\r\n", anchors_status);
 
 		// Check for refresh of anchors
@@ -165,18 +205,22 @@ void refresh_anchors(void) {
 				deca_sleep(RNG_DELAY_MS);
 			}
 		}
-		deca_sleep(POLL_DELAY_MS);
+		//deca_sleep(POLL_DELAY_MS);
+		sleep_all(POLL_DELAY_MS);
 	}
 
 	printf("Anchors discovered. Moving to poll.  anchors_status:%02X\r\n", anchors_status);
 }
 
 static void send_ranges(int tries) {
-	printf("%d\t%04X\t", tries, cph_coordid);
-	for (int i = 0; i < ANCHORS_MIN; i++) {
-		printf("%04X: %3.2f m\t", anchors[i].shortid, anchors[i].range);
+	// Only print if the sender period is an odd number .. hackish
+	if (cph_config->sender_period & 0x01) {
+		printf("%d\t%04X\t", tries, cph_coordid);
+		for (int i = 0; i < ANCHORS_MIN; i++) {
+			printf("%04X: %3.2f m\t", anchors[i].shortid, anchors[i].range);
+		}
+		printf("\r\n");
 	}
-	printf("\r\n");
 
 	if (cph_coordid) {
 		// Now send the results
@@ -266,17 +310,53 @@ void twr_tag_run(void) {
 
 #else
 
+
+//static void sleep_all(uint32_t wait_ms) {
+//	dwt_entersleep();
+//
+////	rtt_write_alarm_time(RTT, rtt_read_timer_value(RTT) + wait_ms);
+////	pmc_sleep(SAM_PM_SMODE_WAIT);
+//	cph_millis_delay(wait_ms);
+//
+//	pio_set_pin_high(DW_WAKEUP_PIO_IDX);
+//	cph_millis_delay(1);
+//	pio_set_pin_low(DW_WAKEUP_PIO_IDX);
+//	cph_millis_delay(5);
+//
+//	// reset antenna delay, it is not preserved
+//	dwt_setrxantennadelay(RX_ANT_DLY);
+//	dwt_settxantennadelay(TX_ANT_DLY);
+//}
+
+
+
 void twr_tag_run(void) {
 	uint32_t start_ms, elapsed_ms, wait_ms;
-
+	uint32_t id;
 
 	// Setup interrupt for DW1000 (disable during configuration)
 	cph_deca_isr_init();
 	cph_deca_isr_disable();
 
+	// Wakeup if necessary
+	reset_DW1000();
+	spi_set_rate_low();
+	id = dwt_readdevid();
+	if (id == 0xFFFFFFFF) {
+		TRACE("DW asleep..waking\r\n");
+		// asleep, wakeup
+		pio_set_pin_high(DW_WAKEUP_PIO_IDX);
+		cph_millis_delay(1);
+		pio_set_pin_low(DW_WAKEUP_PIO_IDX);
+		cph_millis_delay(1);
+	}
+
 	// Setup DECAWAVE
 	cph_deca_init_device();
 	cph_deca_init_network(cph_config->panid, cph_config->shortid);
+
+	id = dwt_readdevid();
+	printf("Device ID: %08X\r\n", id);
 
 	// Set our short id in common messages
 	tx_discover_msg.header.source = cph_config->shortid;
@@ -294,14 +374,10 @@ void twr_tag_run(void) {
 
 	dwt_setautorxreenable(1);
 
-	// First, discover anchors
-	uint32_t anchor_refresh_ts = 0;
-	refresh_anchors();
-	anchor_refresh_ts = cph_get_millis();
+	// Configure sleep parameters
+	dwt_configuresleep(DWT_PRESRV_SLEEP | DWT_CONFIG, DWT_WAKE_WK | DWT_SLP_EN);
 
-
-
-	dwt_configuresleep(DWT_PRESRV_SLEEP | DWT_CONFIG | 0x1800, DWT_WAKE_WK | DWT_SLP_EN);
+	// Setup RTT to count every millisecond
 	rtt_init(RTT, 32);
 	NVIC_DisableIRQ(RTT_IRQn);
 	NVIC_ClearPendingIRQ(RTT_IRQn);
@@ -311,6 +387,10 @@ void twr_tag_run(void) {
 	pmc_set_fast_startup_input(PMC_FSMR_RTTAL);
 
 
+	// First, discover anchors
+	uint32_t anchor_refresh_ts = 0;
+	refresh_anchors();
+	anchor_refresh_ts = cph_get_millis();
 
 
 	// Poll loop
@@ -325,7 +405,7 @@ void twr_tag_run(void) {
 
 			// Check for refresh of anchors
 			uint32_t elapsed = cph_get_millis() - anchor_refresh_ts;
-			if (elapsed > ANCHORS_REFRESH_INTERVAL) {
+			if ((elapsed > ANCHORS_REFRESH_INTERVAL)) {
 				printf("Anchors refresh timeout.  anchors_status:%02X\r\n", anchors_status);
 				refresh_anchors();
 				anchor_refresh_ts = cph_get_millis();
@@ -352,32 +432,21 @@ void twr_tag_run(void) {
 
 		if (ranges_countdown) {
 			send_ranges(MAX_RANGES_BEFORE_POLL_TIMEOUT - ranges_countdown);
+
+			// Execute a delay between ranging exchanges.
+			elapsed_ms = cph_get_millis() - start_ms;
+			wait_ms = POLL_DELAY_MS - elapsed_ms;
+			if (wait_ms > POLL_DELAY_MS)
+				wait_ms = POLL_DELAY_MS;
+
+//			deca_sleep(wait_ms);
+			sleep_all(wait_ms);
+
 		} else {
-			printf("ranges_countdown expired!\r\n");
+			printf("ranges_countdown expired! sleeping\r\n");
+			sleep_all(5 * 1000);
+			TRACE("resuming poll\r\n");
 		}
-
-		// Execute a delay between ranging exchanges.
-		elapsed_ms = cph_get_millis() - start_ms;
-		wait_ms = POLL_DELAY_MS - elapsed_ms;
-		if (wait_ms > POLL_DELAY_MS)
-			wait_ms = POLL_DELAY_MS;
-//		deca_sleep(wait_ms);
-
-
-		dwt_entersleep();
-		rtt_write_alarm_time(RTT, rtt_read_timer_value(RTT) + wait_ms);
-		pmc_sleep(SAM_PM_SMODE_WAIT);
-
-		pio_set_pin_high(DW_WAKEUP_PIO_IDX);
-		cph_millis_delay(1);
-		pio_set_pin_low(DW_WAKEUP_PIO_IDX);
-		cph_millis_delay(1);
-
-		//LAME: Something is lost on wakeup and the ranging code is bad.
-		//      Re-init/config "fixes" it, but is very heavy-handed.
-		cph_deca_init_device();
-		cph_deca_init_network(cph_config->panid, cph_config->shortid);
-
 
 	}
 }

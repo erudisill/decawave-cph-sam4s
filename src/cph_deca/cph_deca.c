@@ -163,6 +163,7 @@ void cph_deca_init_device() {
 	// Setup DECAWAVE
 	reset_DW1000();
 	spi_set_rate_low();
+
 	dwt_initialise(DWT_LOADUCODE);
 	spi_set_rate_high();
 
