@@ -70,7 +70,7 @@ static uint32 status_reg = 0;
 static void sleep_all(uint32_t wait_ms) {
 	dwt_entersleep();
 
-#if 0
+#if 1
 	uint32_t rttv = rtt_read_timer_value(RTT);
 	uint32_t wait_value = rttv + wait_ms;
 
@@ -78,7 +78,10 @@ static void sleep_all(uint32_t wait_ms) {
 	cph_millis_delay(1);
 
 	rtt_write_alarm_time(RTT, wait_value);
+
+	cpu_irq_disable();
 	pmc_sleep(SAM_PM_SMODE_WAIT);
+	cpu_irq_enable();
 
 	// update our millis counter
 	g_cph_millis += wait_ms;
@@ -206,7 +209,7 @@ void refresh_anchors(void) {
 			}
 		}
 		//deca_sleep(POLL_DELAY_MS);
-		sleep_all(POLL_DELAY_MS);
+		sleep_all(cph_config->sender_period);
 	}
 
 	printf("Anchors discovered. Moving to poll.  anchors_status:%02X\r\n", anchors_status);
@@ -422,6 +425,9 @@ void twr_tag_run(void) {
 					if (result == CPH_OK) {
 						anchors_status &= (~(1 << i));
 					}
+					else {
+						TRACE("ERROR: cph_deca_range returned %04X\r\n", result);
+					}
 
 					deca_sleep(RNG_DELAY_MS);
 				}
@@ -435,9 +441,9 @@ void twr_tag_run(void) {
 
 			// Execute a delay between ranging exchanges.
 			elapsed_ms = cph_get_millis() - start_ms;
-			wait_ms = POLL_DELAY_MS - elapsed_ms;
-			if (wait_ms > POLL_DELAY_MS)
-				wait_ms = POLL_DELAY_MS;
+			wait_ms = cph_config->sender_period - elapsed_ms;
+			if (wait_ms > cph_config->sender_period)
+				wait_ms = cph_config->sender_period;
 
 //			deca_sleep(wait_ms);
 			sleep_all(wait_ms);
