@@ -98,4 +98,6 @@
 
 #include <rtt.h>
 
+#include <supc.h>
+
 #endif // ASF_H

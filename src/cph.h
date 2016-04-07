@@ -51,5 +51,6 @@ extern int cph_mode;
 
 extern uint16_t cph_coordid;
 
+void cph_board_init(void);
 
 #endif /* SRC_CPH_H_ */

@@ -134,9 +134,9 @@ void listener_run(void) {
 		else if(trx_signal == SIGNAL_ERR) {
 //			printf("ERROR: %08X\r\n", error_status_reg);
 			printf("[ERR %08X] %d - ", error_status_reg, frame_len);
-			for (int i = 0; i < frame_len; i++) {
-				printf("%02X ", rx_buffer[i]);
-			}
+//			for (int i = 0; i < frame_len; i++) {
+//				printf("%02X ", rx_buffer[i]);
+//			}
 			printf("\r\n");
 			trx_signal = SIGNAL_EMPTY;
 			dwt_rxenable(0);

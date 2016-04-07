@@ -87,8 +87,7 @@ void print_greeting() {
 	TRACE("\r\n");
 }
 
-int main(void) {
-
+void cph_board_init(void) {
 	sysclk_init();
 	board_init();
 
@@ -96,6 +95,19 @@ int main(void) {
 	cph_stdio_init();
 
 	init_config();
+}
+
+int main(void) {
+
+//	sysclk_init();
+//	board_init();
+//
+//	cph_millis_init();
+//	cph_stdio_init();
+//
+//	init_config();
+
+	cph_board_init();
 
 	print_greeting();
 

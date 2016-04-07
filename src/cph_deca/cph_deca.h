@@ -26,6 +26,8 @@ void twr_tag_run(void);
 void listener_run(void);
 void sender_run(void);
 
+#define DEFAULT_RX_TIMEOUT	10000
+#define DEFAULT_TX_TIMEOUT	1000
 
 /* Inter-ranging delay period, in milliseconds. */
 #define RNG_DELAY_MS 	5
@@ -261,8 +263,8 @@ typedef struct PACKED {
 //	return status_reg;
 //}
 
-uint32_t cph_deca_wait_for_tx_finished(void);
-uint32_t cph_deca_wait_for_rx_finished(void);
+uint32_t cph_deca_wait_for_tx_finished(int timeout_ms);
+uint32_t cph_deca_wait_for_rx_finished(int timeout_ms);
 extern volatile uint8_t wait_event;
 
 void cph_deca_load_frame(cph_deca_msg_header_t * hdr, uint16_t size);

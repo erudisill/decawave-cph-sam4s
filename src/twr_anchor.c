@@ -445,7 +445,7 @@ void twr_anchor_run(void) {
 		dwt_setrxtimeout(0);
 		dwt_rxenable(0);
 
-		status_reg = cph_deca_wait_for_rx_finished();
+		status_reg = cph_deca_wait_for_rx_finished(DEFAULT_RX_TIMEOUT * 2);
 
 		if (status_reg & SYS_STATUS_RXFCG) {
 			uint32 frame_len;

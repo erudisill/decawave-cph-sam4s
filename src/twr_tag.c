@@ -66,6 +66,49 @@ static uint8 rx_buffer[CPH_MAX_MSG_SIZE];
 static uint32 status_reg = 0;
 
 
+#if 0
+static void sleep_all(uint32_t wait_ms) {
+	uint32_t ul_previous_time;
+
+	dwt_entersleep();
+	cph_millis_delay(5);
+
+	supc_set_wakeup_mode(SUPC, SUPC_WUMR_RTTEN_ENABLE);
+
+	/* Configure RTT for a 1 second tick interrupt */
+	rtt_init(RTT, 32768);
+	ul_previous_time = rtt_read_timer_value(RTT);
+	while (ul_previous_time == rtt_read_timer_value(RTT));
+
+	/* Enable RTT alarms interrupt to return from backup mode */
+	NVIC_DisableIRQ(RTT_IRQn);
+	NVIC_ClearPendingIRQ(RTT_IRQn);
+	NVIC_SetPriority(RTT_IRQn, 0);
+	NVIC_EnableIRQ(RTT_IRQn);
+	rtt_enable_interrupt(RTT, RTT_MR_ALMIEN);
+
+	rtt_write_alarm_time(RTT, 5);
+
+	MATRIX->CCFG_SYSIO = 0xffffffff;
+	pio_configure(PIOA, PIO_OUTPUT_1, 0xffffffff, PIO_OPENDRAIN);
+	pio_configure(PIOB, PIO_OUTPUT_1, 0xffffffff, PIO_OPENDRAIN);
+	pio_configure(PIOC, PIO_OUTPUT_1, 0xffffffff, PIO_OPENDRAIN);
+	pmc_disable_all_periph_clk();
+	pmc_switch_mck_to_sclk(PMC_MCKR_PRES_CLK_1);
+	pmc_switch_mainck_to_fastrc(CKGR_MOR_MOSCRCF_4_MHz);
+	pmc_osc_disable_xtal(0);
+	pmc_disable_pllack();
+	pmc_disable_pllbck();
+	pmc_switch_mck_to_mainck(PMC_MCKR_PRES_CLK_1);
+
+
+	pmc_enable_backupmode();
+
+	// END OF THE LINE
+
+}
+
+#else
 
 static void sleep_all(uint32_t wait_ms) {
 	dwt_entersleep();
@@ -80,7 +123,21 @@ static void sleep_all(uint32_t wait_ms) {
 	rtt_write_alarm_time(RTT, wait_value);
 
 	cpu_irq_disable();
+
+//	MATRIX->CCFG_SYSIO = 0xffffffff;
+//	pio_configure(PIOA, PIO_OUTPUT_0, 0xffffffff, 0);
+//	pio_configure(PIOB, PIO_OUTPUT_0, 0xffffffff, 0);
+//	pio_configure(PIOC, PIO_OUTPUT_0, 0xffffffff, 0);
+//	pmc_disable_all_periph_clk();
+//	pmc_switch_mck_to_sclk(PMC_MCKR_PRES_CLK_1);
+//	pmc_switch_mainck_to_fastrc(CKGR_MOR_MOSCRCF_4_MHz);
+//	pmc_osc_disable_xtal(0);
+//	pmc_disable_pllack();
+//	pmc_disable_pllbck();
+//	pmc_switch_mck_to_mainck(PMC_MCKR_PRES_CLK_1);
+
 	pmc_sleep(SAM_PM_SMODE_WAIT);
+
 	cpu_irq_enable();
 
 	// update our millis counter
@@ -92,12 +149,15 @@ static void sleep_all(uint32_t wait_ms) {
 	pio_set_pin_high(DW_WAKEUP_PIO_IDX);
 	cph_millis_delay(1);
 	pio_set_pin_low(DW_WAKEUP_PIO_IDX);
-	cph_millis_delay(1);
+	cph_millis_delay(50);
 
-	cph_deca_init_device();
-	cph_deca_init_network(cph_config->panid, cph_config->shortid);
+	dwt_setrxantennadelay(RX_ANT_DLY);
+	dwt_settxantennadelay(TX_ANT_DLY);
+//	cph_deca_init_device();
+//	cph_deca_init_network(cph_config->panid, cph_config->shortid);
 }
 
+#endif
 
 static int discover(int idx) {
 	int result = CPH_OK;
@@ -156,6 +216,7 @@ static int discover(int idx) {
 		}
 	} else {
 		// Clear RX error events in the DW1000 status register.
+		TRACE("ERROR: discover status %08X\r\n", status_reg);
 		dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_ALL_RX_ERR);
 		result = CPH_ERROR;
 	}
@@ -426,7 +487,7 @@ void twr_tag_run(void) {
 						anchors_status &= (~(1 << i));
 					}
 					else {
-						TRACE("ERROR: cph_deca_range returned %04X\r\n", result);
+						//TRACE("ERROR: cph_deca_range returned %04X\r\n", result);
 					}
 
 					deca_sleep(RNG_DELAY_MS);
@@ -449,9 +510,8 @@ void twr_tag_run(void) {
 			sleep_all(wait_ms);
 
 		} else {
-			printf("ranges_countdown expired! sleeping\r\n");
-			sleep_all(5 * 1000);
-			TRACE("resuming poll\r\n");
+			TRACE("ranges_countdown expired! sleeping\r\n");
+			sleep_all(237);
 		}
 
 	}

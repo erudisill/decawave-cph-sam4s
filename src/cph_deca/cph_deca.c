@@ -40,26 +40,26 @@ static uint64_t get_tx_timestamp_u64(void) {
 	return ts;
 }
 
-uint32_t cph_deca_wait_for_tx_finished(void) {
+uint32_t cph_deca_wait_for_tx_finished(int timeout_ms) {
 	uint32_t status_reg;
 	uint32_t start_ms = cph_get_millis();
 	uint32_t elapsed = 0;
 	while (cph_deca_isr_is_detected() == false) {
 		elapsed = cph_get_millis() - start_ms;
-		if (elapsed > 1000)
+		if (elapsed > timeout_ms)
 			return 0;
 	}
 	status_reg = dwt_read32bitreg(SYS_STATUS_ID);
 	return status_reg;
 }
 
-uint32_t cph_deca_wait_for_rx_finished(void) {
+uint32_t cph_deca_wait_for_rx_finished(int timeout_ms) {
 	uint32_t status_reg;
 	uint32_t start_ms = cph_get_millis();
 	uint32_t elapsed = 0;
 	while (cph_deca_isr_is_detected() == false) {
 		elapsed = cph_get_millis() - start_ms;
-		if (elapsed > 1000)
+		if (elapsed > timeout_ms)
 			return 0;
 	}
 	status_reg = dwt_read32bitreg(SYS_STATUS_ID);
@@ -78,7 +78,7 @@ uint32_t cph_deca_send_immediate() {
 	uint32_t status_reg;
 
 	dwt_starttx(DWT_START_TX_IMMEDIATE);
-	status_reg = cph_deca_wait_for_tx_finished();
+	status_reg = cph_deca_wait_for_tx_finished(DEFAULT_TX_TIMEOUT);
 	dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_TXFRS);
 	frame_seq_nb++;
 
@@ -90,7 +90,7 @@ uint32_t cph_deca_send_delayed() {
 
 	int result = dwt_starttx(DWT_START_TX_DELAYED);
 	if (result == DWT_SUCCESS) {
-		status_reg = cph_deca_wait_for_tx_finished();
+		status_reg = cph_deca_wait_for_tx_finished(DEFAULT_TX_TIMEOUT);
 	} else {
 		TRACE("ERROR: dwt_starttx response returned %d - too late!\r\n", result);
 	}
@@ -105,10 +105,10 @@ uint32_t cph_deca_send_delayed_response_expected() {
 
 	int result = dwt_starttx(DWT_START_TX_DELAYED | DWT_RESPONSE_EXPECTED);
 	if (result == DWT_SUCCESS) {
-		status_reg = cph_deca_wait_for_tx_finished();
+		status_reg = cph_deca_wait_for_tx_finished(DEFAULT_TX_TIMEOUT);
 		dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_TXFRS);
 		// Frame sent, now wait for response
-		status_reg = cph_deca_wait_for_rx_finished();
+		status_reg = cph_deca_wait_for_rx_finished(DEFAULT_RX_TIMEOUT);
 		dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_TXFRS);
 	} else {
 		TRACE("ERROR: dwt_starttx response returned %d - too late!\r\n", result);
@@ -132,9 +132,9 @@ uint32_t cph_deca_send_response_expected() {
 	uint32_t status_reg;
 
 	dwt_starttx(DWT_START_TX_IMMEDIATE | DWT_RESPONSE_EXPECTED);
-	status_reg = cph_deca_wait_for_tx_finished();
+	status_reg = cph_deca_wait_for_tx_finished(DEFAULT_TX_TIMEOUT);
 	dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_TXFRS);
-	status_reg = cph_deca_wait_for_rx_finished();
+	status_reg = cph_deca_wait_for_rx_finished(DEFAULT_RX_TIMEOUT);
 	frame_seq_nb++;
 
 	return status_reg;
