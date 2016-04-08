@@ -9,6 +9,7 @@
 //#define REV_A_02
 //#define REV_A_03
 #define REV_B_02
+//#define REV_ANCHOR_A_01
 
 #ifdef REV_A_02
 #define BOARD_REV_MAJOR		0x0A
@@ -21,6 +22,10 @@
 #ifdef REV_B_02
 #define BOARD_REV_MAJOR		0x0B
 #define BOARD_REV_MINOR		0x02
+#endif
+#ifdef REV_ANCHOR_A_01
+#define BOARD_REV_MAJOR		0x0A
+#define BOARD_REV_MINOR		0x01
 #endif
 
 
@@ -50,17 +55,16 @@
 /*----------------------------------------------------------------------------*/
 
 //#define CONSOLE_UART        UART0
-//#define CONSOLE_UART_ID     ID_UART0
+//#define CONSOLE_UART_ID     ID_UART0B
 //
 //#define PINS_CONSOLE_PIO 		PIOA
 //#define PINS_CONSOLE_TYPE 	PIO_PERIPH_A
 //#define PINS_CONSOLE_MASK 	PIO_PA9A_URXD0|PIO_PA10A_UTXD0
 //#define PINS_CONSOLE_ATTR 	PIO_DEFAULT
 
-#if defined(REV_B_02)
+#if defined(REV_B_02) | defined(REV_ANCHOR_A_01)
 #define CONSOLE_UART        UART0
 #define CONSOLE_UART_ID     ID_UART0
-
 #define PINS_CONSOLE_PIO 	PIOA
 #define PINS_CONSOLE_TYPE 	PIO_PERIPH_A
 #define PINS_CONSOLE_MASK 	PIO_PA9A_URXD0|PIO_PA10A_UTXD0
@@ -68,7 +72,6 @@
 #else
 #define CONSOLE_UART        UART1
 #define CONSOLE_UART_ID     ID_UART1
-
 #define PINS_CONSOLE_PIO 	PIOB
 #define PINS_CONSOLE_TYPE 	PIO_PERIPH_A
 #define PINS_CONSOLE_MASK 	PIO_PB2A_URXD1|PIO_PB3A_UTXD1
@@ -79,33 +82,33 @@
 /*	LEDS																	  */
 /*----------------------------------------------------------------------------*/
 
-#if defined(REV_B_02)
+#if defined(REV_ANCHOR_A_01)
+#define LED_STATUS0_IDX		PIO_PB3_IDX
+#define PINS_LED0_PIO		PIOB
+#define PINS_LED0_TYPE		PIO_OUTPUT_0
+#define PINS_LED0_MASK		PIO_PB3
+#define PINS_LED0_ATTR		PIO_DEFAULT
+#define LED_GROUP_PIO		PIOB
+#define LED_GROUP_MASK		(PINS_LED0_MASK)
+#elif defined(REV_B_02)
 #define LED_STATUS0_IDX		PIO_PA0_IDX
-
 #define PINS_LED0_PIO		PIOA
 #define PINS_LED0_TYPE		PIO_OUTPUT_0
 #define PINS_LED0_MASK		PIO_PA0
 #define PINS_LED0_ATTR		PIO_DEFAULT
-
 #define LED_GROUP_PIO		PIOA
 #define LED_GROUP_MASK		(PINS_LED0_MASK)
-
 #else
 #define LED_STATUS0_IDX		PIO_PC12_IDX
-
 #define PINS_LED0_PIO		PIOC
 #define PINS_LED0_TYPE		PIO_OUTPUT_0
 #define PINS_LED0_MASK		PIO_PC12
 #define PINS_LED0_ATTR		PIO_DEFAULT
-
-
 #define LED_STATUS1_IDX		PIO_PC13_IDX
-
 #define PINS_LED1_PIO		PIOC
 #define PINS_LED1_TYPE		PIO_OUTPUT_0
 #define PINS_LED1_MASK		PIO_PC13
 #define PINS_LED1_ATTR		PIO_DEFAULT
-
 #define LED_GROUP_PIO		PIOC
 #define LED_GROUP_MASK		(PINS_LED0_MASK | PINS_LED1_MASK)
 #endif
@@ -147,7 +150,7 @@
 #define DW_CHIP_SELECT				2
 #define DW_CHIP_SELECT_VALUE		0x03
 #define DW_NONE_CHIP_SELECT_VALUE   0x0f
-#elif defined(REV_B_02)
+#elif defined(REV_B_02)  | defined(REV_ANCHOR_A_01)
 #define DW_MISO_PIO_IDX				PIO_PA12_IDX
 #define DW_MOSI_PIO_IDX				PIO_PA13_IDX
 #define DW_SPCK_PIO_IDX				PIO_PA14_IDX
@@ -172,32 +175,22 @@ error Undefined revision.
 
 
 // Decawave WAKEUP
-#if !defined(REV_B_02)
-#define DW_WAKEUP_PIO				PIOC
-#define DW_WAKEUP_PIO_IDX			PIO_PC7_IDX
-#define DW_WAKEUP_MASK				PIO_PC7
-#define DW_WAKEUP_TYPE				PIO_OUTPUT_0
-#define DW_WAKEUP_ATTR				(PIO_DEFAULT)
-#elif defined(REV_B_02)
+#if defined(REV_B_02)  | defined(REV_ANCHOR_A_01)
 #define DW_WAKEUP_PIO				PIOA
 #define DW_WAKEUP_PIO_IDX			PIO_PA18_IDX
 #define DW_WAKEUP_MASK				PIO_PA18
 #define DW_WAKEUP_TYPE				PIO_OUTPUT_0
 #define DW_WAKEUP_ATTR				(PIO_DEFAULT)
 #else
-error Undefined revision.
+#define DW_WAKEUP_PIO				PIOC
+#define DW_WAKEUP_PIO_IDX			PIO_PC7_IDX
+#define DW_WAKEUP_MASK				PIO_PC7
+#define DW_WAKEUP_TYPE				PIO_OUTPUT_0
+#define DW_WAKEUP_ATTR				(PIO_DEFAULT)
 #endif
 
 // Decawave RSTn - input, no pull up/down
-#if !defined(REV_B_02)
-#define DW_RSTn_PIO					PIOC
-#define DW_RSTn_PIO_ID				ID_PIOC
-#define DW_RSTn_PIO_IDX				PIO_PC10_IDX
-#define DW_RSTn_MASK				PIO_PC10
-#define DW_RSTn_TYPE				PIO_INPUT
-#define DW_RSTn_ATTR				(PIO_IT_RISE_EDGE | PIO_DEFAULT)
-#define DW_RSTn_FLAGS				(DW_RSTn_TYPE | DW_RSTn_ATTR)
-#elif defined(REV_B_02)
+#if defined(REV_B_02) | defined(REV_ANCHOR_A_01)
 #define DW_RSTn_PIO					PIOA
 #define DW_RSTn_PIO_ID				ID_PIOA
 #define DW_RSTn_PIO_IDX				PIO_PA15_IDX
@@ -206,24 +199,28 @@ error Undefined revision.
 #define DW_RSTn_ATTR				(PIO_IT_RISE_EDGE | PIO_DEFAULT)
 #define DW_RSTn_FLAGS				(DW_RSTn_TYPE | DW_RSTn_ATTR)
 #else
-#error Unknown revision.
+#define DW_RSTn_PIO					PIOC
+#define DW_RSTn_PIO_ID				ID_PIOC
+#define DW_RSTn_PIO_IDX				PIO_PC10_IDX
+#define DW_RSTn_MASK				PIO_PC10
+#define DW_RSTn_TYPE				PIO_INPUT
+#define DW_RSTn_ATTR				(PIO_IT_RISE_EDGE | PIO_DEFAULT)
+#define DW_RSTn_FLAGS				(DW_RSTn_TYPE | DW_RSTn_ATTR)
 #endif
 
 // Decawave RSTSWn - tied to a P-CHAN MOSFET
-#if !defined(REV_B_02)
-#define DW_RSTSWn_PIO				PIOC
-#define DW_RSTSWn_PIO_IDX			PIO_PC11_IDX
-#define DW_RSTSWn_MASK				PIO_PC11
-#define DW_RSTSWn_TYPE				PIO_OUTPUT_1
-#define DW_RSTSWn_ATTR				(PIO_DEFAULT)
-#elif defined(REV_B_02)
+#if defined(REV_B_02) | defined(REV_ANCHOR_A_01)
 #define DW_RSTSWn_PIO				PIOA
 #define DW_RSTSWn_PIO_IDX			PIO_PA17_IDX
 #define DW_RSTSWn_MASK				PIO_PA17
 #define DW_RSTSWn_TYPE				PIO_OUTPUT_1
 #define DW_RSTSWn_ATTR				(PIO_DEFAULT)
 #else
-#error Unknown revision.
+#define DW_RSTSWn_PIO				PIOC
+#define DW_RSTSWn_PIO_IDX			PIO_PC11_IDX
+#define DW_RSTSWn_MASK				PIO_PC11
+#define DW_RSTSWn_TYPE				PIO_OUTPUT_1
+#define DW_RSTSWn_ATTR				(PIO_DEFAULT)
 #endif
 
 // Decawave IRQ
@@ -239,7 +236,7 @@ error Undefined revision.
 #define DW_IRQ_IDX					PIO_PA20_IDX
 #define DW_IRQ_MASK					PIO_PA20
 #define DW_IRQ_IRQ					PIOA_IRQn
-#elif defined(REV_B_02)
+#elif defined(REV_B_02) | defined(REV_ANCHOR_A_01)
 #define DW_IRQ_PIO					PIOA
 #define DW_IRQ_PIO_ID				ID_PIOA
 #define DW_IRQ_IDX					PIO_PA16_IDX

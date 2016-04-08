@@ -38,8 +38,14 @@ void sender_run(void);
 /* Default antenna delay values for 64 MHz PRF. See NOTE 2 below. */
 //#define TX_ANT_DLY 16436
 //#define RX_ANT_DLY 16436
+#if defined(REV_B_02)
+//#define TX_ANT_DLY 16400
+#define TX_ANT_DLY 16350
+#define RX_ANT_DLY TX_ANT_DLY
+#else
 #define TX_ANT_DLY 16565
 #define RX_ANT_DLY 16565
+#endif
 
 
 
@@ -73,14 +79,14 @@ void sender_run(void);
 
 
 // Min Number of anchors to range with - if this changes, so should ANCHORS_MASK
-//#define ANCHORS_MIN		4
+#define ANCHORS_MIN		4
 //#define ANCHORS_MIN		3
-#define ANCHORS_MIN		1
+//#define ANCHORS_MIN		1
 
 // Used for tracking status of anchor ids (by bitmask) during discovery and poll
-//#define ANCHORS_MASK	0x0F
+#define ANCHORS_MASK	0x0F
 //#define ANCHORS_MASK	0x07
-#define ANCHORS_MASK	0x01
+//#define ANCHORS_MASK	0x01
 
 // Anchor refresh interval
 //#define ANCHORS_REFRESH_INTERVAL	10000
