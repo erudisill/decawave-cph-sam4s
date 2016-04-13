@@ -1,6 +1,7 @@
 #include <cph.h>
 #include <deca_device_api.h>
 #include <string.h>
+#include "imu.h"
 
 
 cph_config_t * cph_config;
@@ -99,17 +100,14 @@ void cph_board_init(void) {
 	cph_millis_init();
 
 	init_config();
+
+#if defined(IMU_ENABLE)
+	imu_init_default();
+#endif
+
 }
 
 int main(void) {
-
-//	sysclk_init();
-//	board_init();
-//
-//	cph_millis_init();
-//	cph_stdio_init();
-//
-//	init_config();
 
 	cph_board_init();
 
@@ -119,7 +117,7 @@ int main(void) {
 	pio_set_pin_high(LED_STATUS0_IDX);
 	for (int i = 0; i < (5 * 8); i++) {
 		uint8_t c = 0x00;
-//		uart_read(CONSOLE_UART, &c);
+
 		scanf("%c", &c);
 		if (c == 'c') {
 			configure_main();
