@@ -72,13 +72,13 @@
 #define CONFIG_PLL0_DIV             3
 
 // ===== PLL1 (B) Options   (Fpll = (Fclk * PLL_mul) / PLL_div)
-//#define CONFIG_PLL1_SOURCE          PLL_SRC_MAINCK_XTAL
-//#define CONFIG_PLL1_MUL             16
-//#define CONFIG_PLL1_DIV             3
+#define CONFIG_PLL1_SOURCE          PLL_SRC_MAINCK_XTAL
+#define CONFIG_PLL1_MUL             16
+#define CONFIG_PLL1_DIV             2
 
 // ===== USB Clock Source Options   (Fusb = FpllX / USB_div)
 //#define CONFIG_USBCLK_SOURCE        USBCLK_SRC_PLL0
-//#define CONFIG_USBCLK_SOURCE        USBCLK_SRC_PLL1
-//#define CONFIG_USBCLK_DIV           1
+#define CONFIG_USBCLK_SOURCE        USBCLK_SRC_PLL1
+#define CONFIG_USBCLK_DIV           2
 
 #endif /* CONF_CLOCK_H_INCLUDED */
