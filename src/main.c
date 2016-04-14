@@ -91,25 +91,26 @@ void cph_board_init(void) {
 	sysclk_init();
 	board_init();
 
-
-//	cph_stdio_init();
+#if defined(REV_ANCHOR_A_01)
 	cpu_irq_enable();
 	stdio_usb_init();
+#else
+	cph_stdio_init();
+#endif
 
 	cph_millis_init();
 
 	init_config();
 }
 
-int main(void) {
+volatile bool rx_notify = false;
 
-//	sysclk_init();
-//	board_init();
-//
-//	cph_millis_init();
-//	cph_stdio_init();
-//
-//	init_config();
+void usb_rx_notify(void)
+{
+	rx_notify = true;
+}
+
+int main(void) {
 
 	cph_board_init();
 
@@ -119,8 +120,14 @@ int main(void) {
 	pio_set_pin_high(LED_STATUS0_IDX);
 	for (int i = 0; i < (5 * 8); i++) {
 		uint8_t c = 0x00;
-//		uart_read(CONSOLE_UART, &c);
-		scanf("%c", &c);
+#if defined(REV_ANCHOR_A_01)
+		if(rx_notify == true) {
+			rx_notify = false;
+			stdio_usb_getchar(NULL, &c);
+		}
+#else
+		uart_read(CONSOLE_UART, &c);
+#endif
 		if (c == 'c') {
 			configure_main();
 			init_config();

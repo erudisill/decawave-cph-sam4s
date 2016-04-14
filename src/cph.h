@@ -51,6 +51,9 @@ extern int cph_mode;
 
 extern uint16_t cph_coordid;
 
+extern volatile bool rx_notify;
+extern void usb_rx_notify(void);
+
 void cph_board_init(void);
 
 #endif /* SRC_CPH_H_ */

@@ -75,7 +75,18 @@ void listener_run(void) {
 	irq_init();
 	pio_disable_interrupt(DW_IRQ_PIO, DW_IRQ_MASK);
 
-
+	// Wakeup if necessary
+	reset_DW1000();
+	spi_set_rate_low();
+	uint32_t id = dwt_readdevid();
+	if (id == 0xFFFFFFFF) {
+		TRACE("DW asleep..waking\r\n");
+		// asleep, wakeup
+		pio_set_pin_high(DW_WAKEUP_PIO_IDX);
+		cph_millis_delay(1);
+		pio_set_pin_low(DW_WAKEUP_PIO_IDX);
+		cph_millis_delay(1);
+	}
 
 //	// Setup DW1000
 //	dwt_txconfig_t txconfig;
@@ -98,7 +109,7 @@ void listener_run(void) {
 	cph_deca_init_network(cph_config->panid, cph_config->shortid);
 
 
-	uint32_t id = dwt_readdevid();
+	id = dwt_readdevid();
 	printf("Device ID: %08X\r\n", id);
 
 
