@@ -71,4 +71,8 @@ void board_init(void)
 	pio_configure(PINS_TWI0_PIO, PINS_TWI0_TYPE, PINS_TWI0_MASK, PINS_TWI0_ATTR);
 #endif
 
+#ifdef CONF_BOARD_TWI1
+	pio_configure(PINS_TWI1_PIO, PINS_TWI1_TYPE, PINS_TWI1_MASK, PINS_TWI1_ATTR);
+#endif
+
 }

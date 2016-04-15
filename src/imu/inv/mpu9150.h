@@ -132,6 +132,14 @@
 #define MPU9150_RA_FIFO_R_W         0x74
 #define MPU9150_RA_WHO_AM_I         0x75
 
+// WOM register bits
+#define MPU9150_WOM_EN_BIT     			6
+
+// MOTION DETECTION CTRL register bits
+#define MPU9150_ACCEL_INTEL_EN			7
+#define MPU9150_ACCEL_INTEL_MODE		6
+
+
 #define MPU9150_TC_PWR_MODE_BIT     7
 #define MPU9150_TC_OFFSET_BIT       6
 #define MPU9150_TC_OFFSET_LENGTH    6
@@ -333,6 +341,7 @@
 #define MPU9150_PWR1_DEVICE_RESET_BIT   7
 #define MPU9150_PWR1_SLEEP_BIT          6
 #define MPU9150_PWR1_CYCLE_BIT          5
+#define MPU9150_PWR1_STANDBY_BIT		4
 #define MPU9150_PWR1_TEMP_DIS_BIT       3
 #define MPU9150_PWR1_CLKSEL_BIT         2
 #define MPU9150_PWR1_CLKSEL_LENGTH      3
@@ -370,6 +379,9 @@
 #define MPU9150_DMP_MEMORY_BANKS        8
 #define MPU9150_DMP_MEMORY_BANK_SIZE    256
 #define MPU9150_DMP_MEMORY_CHUNK_SIZE   16
+
+
+
 
 
 #endif /* MPU9150_H_ */

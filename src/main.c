@@ -2,6 +2,7 @@
 #include <deca_device_api.h>
 #include <string.h>
 #include "imu.h"
+#include "gimbal.h"
 
 
 cph_config_t * cph_config;
@@ -92,19 +93,28 @@ void cph_board_init(void) {
 	sysclk_init();
 	board_init();
 
-
-//	cph_stdio_init();
 	cpu_irq_enable();
-	stdio_usb_init();
-
+	cph_usb_init();
 	cph_millis_init();
 
 	init_config();
 
 #if defined(IMU_ENABLE)
-	imu_init_default();
+	imu_init_wom();
+//	gimbal_init();
+
 #endif
 
+#if defined(BARO_ENABLE)
+	baro_init();
+#endif
+
+}
+
+ISR(TWI1_Handler)
+{
+	TRACE("ISR\r\n");
+//I WANT TO GET TO THIS POINT!!!
 }
 
 int main(void) {
@@ -113,12 +123,21 @@ int main(void) {
 
 	print_greeting();
 
+//	while(true) {
+//		gimbal_tick();
+//		cph_millis_delay(10);
+//	}
+
 	// Blink LED for 5 seconds
 	pio_set_pin_high(LED_STATUS0_IDX);
-	for (int i = 0; i < (5 * 8); i++) {
+	for (int i = 0; i < (10 * 8); i++) {
+
 		uint8_t c = 0x00;
 
-		scanf("%c", &c);
+		if (cph_usb_data_ready()) {
+			cph_usb_data_read(&c);
+		}
+
 		if (c == 'c') {
 			configure_main();
 			init_config();

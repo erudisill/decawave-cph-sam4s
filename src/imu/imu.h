@@ -18,6 +18,9 @@
 
 
 void imu_init_default(void);
+void imu_init_wom(void);
+void imu_init_lowpower_motion_detection(void);
+void imu_init_lowpower_motion_detection2(void);
 void imu_init(void);
 void imu_reset(void);
 bool imu_test_connection(void);
@@ -32,6 +35,27 @@ void imu_get_acceleration(int16_t *x, int16_t *y, int16_t *z);
 void imu_get_rotation(int16_t *x, int16_t *y, int16_t *z);
 void imu_get_mag(int16_t *x, int16_t *y, int16_t *z);
 
+
+void imu_set_motion_detection_threshold(uint8_t threshold);
+void imu_set_zero_motion_detection_threshold(uint8_t threshold);
+void imu_set_motion_detection_duration(uint8_t threshold);
+void imu_set_zero_motion_detection_duration(uint8_t threshold);
+void imu_set_standby_x_accel_enabled(bool enabled);
+void imu_set_standby_y_accel_enabled(bool enabled);
+void imu_set_standby_z_accel_enabled(bool enabled);
+void imu_set_standby_xyz_accel_enabled(bool enabled);
+void imu_set_dhpf_mode(uint8_t bandwidth);
+
+void imu_set_power_on_delay(uint8_t delay);
+void imu_set_int_zero_motion_enabled(bool enabled);
+
+void imu_wom_set_pwr_mgmt_1(void);
+void imu_wom_set_pwr_mgmt_2(void);
+void imu_wom_set_accel_lpf(void);
+void imu_wom_enable_motion_interrupt(void);
+void imu_wom_enable_accel_hardware_intel(void);
+void imu_wom_set_wakeup_frequency(uint8_t frequency);
+void imu_wom_enable_cycle_mode();
 
 uint8_t imu_get_dlpf_mode();
 void imu_set_dlpf_mode(uint8_t mode);

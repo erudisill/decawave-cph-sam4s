@@ -29,8 +29,7 @@ Twi *twi = NULL;
 
 void i2c_init(Twi * _twi)
 {
-//	twi = _twi;
-	twi = TWI1;
+	twi = _twi;
 	i2c_status = UNINITIALIZED;
 	twi_clock = TWI_CLOCK;
 
