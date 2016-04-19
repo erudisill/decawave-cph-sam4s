@@ -11,11 +11,13 @@
 #include "compiler.h"
 #include "imu_def.h"
 
+extern volatile bool wake_event_received;
 
 #define IMU_ADDRESS					0x68
 #define IMU_BUFFER_LEN				14
 #define IMU_INTERRUPT_ENABLE		1
 
+void run_imu_test(void);
 
 void imu_init_default(void);
 void imu_init_wom(void);
@@ -62,6 +64,23 @@ void imu_set_dlpf_mode(uint8_t mode);
 void imu_set_rate(uint8_t rate);
 void imu_set_int_enabled(uint8_t enabled);
 uint8_t imu_get_int_dataready_status(void);
+
+
+uint8_t imu_get_accel_config2(void);
+bool get_wake_cycle_enabled(void);
+bool get_sleep_enabled(void);
+bool get_standby_enabled(void);
+bool get_temp_sensor_enabled(void);
+uint8_t get_clock_source(void);
+uint8_t get_wake_frequency(void);
+bool get_standby_x_accel_enabled(void);
+bool get_standby_y_accel_enabled(void);
+bool get_standby_z_accel_enabled(void);
+bool get_standby_x_gyro_enabled(void);
+bool get_standby_y_gyro_enabled(void);
+bool get_standby_z_gyro_enabled(void);
+uint8_t get_motion_interrupt_enabled(void);
+
 
 bool imu_irq_ready(void);
 void imu_irq_reset(void);

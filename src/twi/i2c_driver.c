@@ -165,6 +165,14 @@ bool writeBits(uint8_t address, uint8_t regAddr, uint8_t bitStart, uint8_t lengt
 		return false;
 }
 
+uint8_t readBit(uint8_t devAddr, uint8_t regAddr, uint8_t bitNum, uint8_t *data, uint16_t timeout) {
+    uint8_t b;
+    uint8_t count = readByte(devAddr, regAddr, &b, timeout);
+    *data = b & (1 << bitNum);
+    return count;
+}
+
+
 uint8_t readBits(uint8_t address, uint8_t regAddr, uint8_t bitStart, uint8_t length, uint8_t *data, uint16_t timeout)
 {
 	   // 01101001 read byte

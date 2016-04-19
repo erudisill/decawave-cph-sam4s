@@ -93,6 +93,8 @@ void cph_board_init(void) {
 	sysclk_init();
 	board_init();
 
+
+
 	cpu_irq_enable();
 	cph_usb_init();
 	cph_millis_init();
@@ -111,22 +113,14 @@ void cph_board_init(void) {
 
 }
 
-ISR(TWI1_Handler)
-{
-	TRACE("ISR\r\n");
-//I WANT TO GET TO THIS POINT!!!
-}
-
 int main(void) {
 
 	cph_board_init();
 
 	print_greeting();
 
-//	while(true) {
-//		gimbal_tick();
-//		cph_millis_delay(10);
-//	}
+	// todo: the following function blocks and runs the imu wake on motion code
+	run_imu_test();
 
 	// Blink LED for 5 seconds
 	pio_set_pin_high(LED_STATUS0_IDX);
@@ -164,4 +158,6 @@ int main(void) {
 		sender_run();
 	}
 }
+
+
 
