@@ -49,6 +49,7 @@
 
 #include "compiler.h"
 #include "board.h"
+#include "cph_usb.h"
 
 /**
  * USB Device Configuration
@@ -154,8 +155,7 @@
 //#define  UDI_CDC_SET_DTR_EXT(port,set)    main_cdc_set_dtr(port,set)
 //#define  UDI_CDC_SET_RTS_EXT(port,set)
 
-//#define  UDI_CDC_RX_NOTIFY(port)
-#define  UDI_CDC_RX_NOTIFY(port) usb_rx_notify();
+#define  UDI_CDC_RX_NOTIFY(port)			cph_usb_rx_notify();
 #define  UDI_CDC_TX_EMPTY_NOTIFY(port)
 #define  UDI_CDC_SET_CODING_EXT(port,cfg)
 #define  UDI_CDC_SET_DTR_EXT(port,set)

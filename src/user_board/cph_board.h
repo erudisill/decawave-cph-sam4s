@@ -28,6 +28,9 @@
 #define BOARD_REV_MINOR		0x01
 #endif
 
+//#define IMU_ENABLE			0x01
+//#define BARO_ENABLE			0x01
+
 
 /** Board oscillator settings */
 #define BOARD_FREQ_SLCK_XTAL        (32768U)
@@ -250,5 +253,60 @@ error Undefined revision.
 #define DW_IRQ_ATTR					(PIO_IT_RISE_EDGE | PIO_DEFAULT)
 //#define DW_IRQ_ATTR					(PIO_IT_HIGH_LEVEL | PIO_DEFAULT)
 #define DW_IRQ_FLAGS				(DW_IRQ_TYPE | DW_IRQ_ATTR)
+
+
+// Invensense IMU TWI interface
+
+extern void imu_process_interrupt(uint32_t id, uint32_t mask);
+
+#define IMU_TWI		TWI0
+#define IMU_TWI_ID	ID_TWI0
+
+#define IMU_IRQ_PIO					PIOA
+#define IMU_IRQ_PIO_ID				ID_PIOA
+#define IMU_IRQ_IDX					PIO_PA2_IDX
+#define IMU_IRQ_MASK				PIO_PA2
+#define IMU_IRQ_IRQ					PIOA_IRQn
+
+#define IMU_IRQ_TYPE				PIO_INPUT
+#define IMU_IRQ_ATTR				(PIO_IT_RISE_EDGE | PIO_DEFAULT)
+#define IMU_IRQ_FLAGS				(IMU_IRQ_TYPE | IMU_IRQ_ATTR)
+
+#define PINS_TWI0_PIO		PIOA
+#define PINS_TWI0_ID		ID_PIOA
+#define PINS_TWI0_TYPE		PIO_PERIPH_A
+#define PINS_TWI0_MASK 		(PIO_PA4A_TWCK0 | PIO_PA3A_TWD0)
+#define PINS_TWI0_ATTR		PIO_DEFAULT
+
+
+// Bosch MPL3115A Barometric Sensor TWI Interface
+
+extern void baro_process_interrupt(uint32_t id, uint32_t mask);
+
+#define BARO_TWI		TWI1
+#define BARO_TWI_ID		ID_TWI1
+
+#define BARO_IRQ_PIO				PIOB
+#define BARO_IRQ_PIO_ID				ID_PIOB
+#define BARO_IRQ_IDX				PIO_PA2_IDX
+#define BARO_IRQ_MASK				PIO_PA2
+#define BARO_IRQ_IRQ				PIOB_IRQn
+
+#define BARO_IRQ_TYPE				PIO_INPUT
+#define BARO_IRQ_ATTR				(PIO_IT_RISE_EDGE | PIO_DEFAULT)
+#define BARO_IRQ_FLAGS				(IMU_IRQ_TYPE | IMU_IRQ_ATTR)
+
+#define PINS_TWI1_PIO		PIOB
+#define PINS_TWI1_ID		ID_PIOB
+#define PINS_TWI1_TYPE		PIO_PERIPH_A
+#define PINS_TWI1_MASK 		(PIO_PB5A_TWCK1 | PIO_PB4A_TWD1)
+#define PINS_TWI1_ATTR		PIO_DEFAULT
+
+
+
+
+
+
+
 
 #endif  // _CPH_BOARD_H

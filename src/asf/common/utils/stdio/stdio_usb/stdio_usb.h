@@ -67,6 +67,9 @@
 #include <udc.h>
 #include <udi_cdc.h>
 
+uint8_t stdio_in_buffer[256];
+uint8_t stdio_out_buffer[256];
+
 static volatile bool stdio_usb_interface_enable;
 
 extern int _write (char c, int *f);

@@ -112,4 +112,7 @@
 #include <udc.h>
 #include <udd.h>
 
+// From module: TWI - Two-wire Interface
+#include <twi.h>
+
 #endif // ASF_H

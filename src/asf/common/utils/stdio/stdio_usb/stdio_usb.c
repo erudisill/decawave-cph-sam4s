@@ -87,6 +87,8 @@ void stdio_usb_disable(void)
 {
 	stdio_usb_interface_enable = false;
 }
+uint8_t stdio_in_buffer[256] = {0};
+uint8_t stdio_out_buffer[256] = {0};
 
 void stdio_usb_init(void)
 {
@@ -111,6 +113,9 @@ void stdio_usb_init(void)
 	// Specify that stdout and stdin should not be buffered.
 	setbuf(stdout, NULL);
 	setbuf(stdin, NULL);
+
+//	setbuf(stdout, stdio_out_buffer);
+//	setbuf(stdin, stdio_in_buffer);
 	// Note: Already the case in IAR's Normal DLIB default configuration
 	// and AVR GCC library:
 	// - printf() emits one character at a time.
