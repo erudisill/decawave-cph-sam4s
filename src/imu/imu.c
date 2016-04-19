@@ -55,19 +55,15 @@ void imu_irq_reset(void)
 	irq_set = 0x00;
 }
 
-void imu_init_default(void)
-{
-	imu_init();
-	imu_set_rate(7);
-	cph_millis_delay(10);
-	imu_set_dlpf_mode(MPU6050_DLPF_BW_5);
-}
-
 
 
 void imu_init_wom(void)
 {
+
 	imu_init();
+	cph_millis_delay(10);
+
+	imu_reset();
 	cph_millis_delay(10);
 
 	imu_wom_set_pwr_mgmt_1();
@@ -344,13 +340,54 @@ uint8_t imu_get_dlpf_mode()
 
 uint8_t imu_get_accel_config2(void)
 {
+
+	memset(imu_buffer, 0, sizeof(imu_buffer));
+	static volatile uint8_t bit0 = 0;
+	static volatile uint8_t bit1 = 0;
+	static volatile uint8_t bit2 = 0;
+	static volatile uint8_t bit3 = 0;
+	static volatile uint8_t reg_1d = 0;
+	static volatile uint8_t reg_bits = 0;
+
+	TRACE("ACCEL_CONFIG 2 (0x1D) ");
+	// accel_fchoice_b
+	readBit(imu_address, MPU9150_RA_FF_THR, 3, imu_buffer, I2CDEV_DEFAULT_READ_TIMEOUT);
+	bit3 = imu_buffer[0];
+	memset(imu_buffer, 0, sizeof(imu_buffer));
+	TRACE("accel_fchoice_b bit [3] %d\r\n", bit3);
+
+
+	TRACE("ACCEL_CONFIG 2 (0x1D) ");
+	// A_DLPFCFG
+	readBit(imu_address, MPU9150_RA_FF_THR, 0, imu_buffer, I2CDEV_DEFAULT_READ_TIMEOUT);
+	bit0 = imu_buffer[0];
 	memset(imu_buffer, 0, sizeof(imu_buffer));
 
-//	readBit(imu_address, MPU9150_RA_FF_THR
-//	readBits(imu_address, MPU9150_RA_FF_THR, 0, 5, imu_buffer, I2CDEV_DEFAULT_READ_TIMEOUT);
-//	readByte(imu_address, MPU9150_RA_FF_THR, imu_buffer, I2CDEV_DEFAULT_READ_TIMEOUT);
+	// A_DLPFCFG
+	readBit(imu_address, MPU9150_RA_FF_THR, 1, imu_buffer, I2CDEV_DEFAULT_READ_TIMEOUT);
+	bit1 = imu_buffer[0];
+	memset(imu_buffer, 0, sizeof(imu_buffer));
 
-	return imu_buffer[0];
+	// A_DLPFCFG
+	readBit(imu_address, MPU9150_RA_FF_THR, 2, imu_buffer, I2CDEV_DEFAULT_READ_TIMEOUT);
+	bit2 = imu_buffer[0];
+	memset(imu_buffer, 0, sizeof(imu_buffer));
+
+	TRACE("A_DLPFCFG bits [2:0] %d %d %d\r\n", bit2, bit1, bit0);
+
+	return 0;
+//
+//	// read entire byte
+//	readByte(imu_address, MPU9150_RA_FF_THR, imu_buffer, I2CDEV_DEFAULT_READ_TIMEOUT);
+//	reg_1d = imu_buffer[0];
+//	memset(imu_buffer, 0, sizeof(imu_buffer));
+//
+//	// read all bits
+//	readBits(imu_address, MPU9150_RA_FF_THR, 0, 8, imu_buffer, I2CDEV_DEFAULT_READ_TIMEOUT);
+//	reg_bits = 0;
+//	memset(imu_buffer, 0, sizeof(imu_buffer));
+//
+//	return imu_buffer[0];
 }
 
 void imu_set_dlpf_mode(uint8_t mode)
@@ -523,7 +560,8 @@ void imu_wom_set_accel_lpf(void)
 	status = writeBit(imu_address, MPU9150_RA_FF_THR, MPU9150_DLPF_FCHOICE_B_BIT, 1);
 	cph_millis_delay(10);
 
-	status = writeBits(imu_address, MPU9150_RA_FF_THR, MPU9150_DLPF_A_DLPFCFG_BIT, MPU9150_DLPF_A_DLPFCFG_LENGTH, 1);
+	status = writeBit(imu_address, MPU9150_RA_FF_THR, MPU9150_DLPF_A_DLPFCFG_BIT, 1);
+	cph_millis_delay(10);
 
 
 }
@@ -680,6 +718,35 @@ uint8_t get_motion_interrupt_enabled(void)
 }
 
 
+bool get_accel_intel_enabled(void)
+{
+	memset(imu_buffer, 0, sizeof(imu_buffer));
+
+	readBit(imu_address, MPU9150_RA_MOT_DETECT_CTRL, MPU9150_ACCEL_INTEL_EN, imu_buffer, I2CDEV_DEFAULT_READ_TIMEOUT);
+
+	return imu_buffer[0];
+}
+
+bool get_accel_intel_mode(void)
+{
+	memset(imu_buffer, 0, sizeof(imu_buffer));
+
+	readBit(imu_address, MPU9150_RA_MOT_DETECT_CTRL, MPU9150_ACCEL_INTEL_MODE, imu_buffer, I2CDEV_DEFAULT_READ_TIMEOUT);
+
+	return imu_buffer[0];
+}
+
+uint8_t get_motion_threshold(void)
+{
+	memset(imu_buffer, 0, sizeof(imu_buffer));
+
+
+	readByte(imu_address, MPU9150_RA_MOT_THR, imu_buffer, I2CDEV_DEFAULT_READ_TIMEOUT);
+	return imu_buffer[0];
+}
+
+
+
 void run_imu_test(void)
 {
 	// *** begin test imu ***
@@ -697,7 +764,6 @@ void run_imu_test(void)
 		if (c == '?') {
 			TRACE("wake on motion settings:\r\n");
 
-			TRACE("imu_get_accel_config2: %d\r\n", imu_get_accel_config2());
 			TRACE("imu_get_wake_cycle_enabled: %d\r\n", get_wake_cycle_enabled());
 			TRACE("imu_get_sleep_enabled: %d\r\n", get_sleep_enabled());
 			TRACE("imu_get_standby_enabled: %d\r\n", get_standby_enabled());
@@ -707,9 +773,13 @@ void run_imu_test(void)
 			TRACE("imu_get_standby_x_gyro_enabled: %d\r\n", get_standby_x_gyro_enabled());
 			TRACE("imu_get_standby_y_gyro_enabled: %d\r\n", get_standby_y_gyro_enabled());
 			TRACE("imu_get_standby_z_gyro_enabled: %d\r\n", get_standby_z_gyro_enabled());
-			TRACE("imu_get_wake_frequency: %02x\r\n", get_wake_frequency());
-			TRACE("imu_get_dlpf_mode: %02x\r\n", imu_get_dlpf_mode());
-			TRACE("imu_get_motion_interrupt_enabled: %02x\r\n", get_motion_interrupt_enabled());
+			imu_get_accel_config2();
+			TRACE("imu_get_motion_interrupt_enabled: 0x%02x\r\n", get_motion_interrupt_enabled());
+			TRACE("get_accel_intel_enabled: %d\r\n", get_accel_intel_enabled());
+			TRACE("get_accel_intel_mode: %d\r\n", get_accel_intel_mode());
+			TRACE("get_motion_threshold: %d\r\n", get_motion_threshold());
+			TRACE("imu_get_wake_frequency: 0x%02x\r\n", get_wake_frequency());
+
 //			TRACE("imu_get_temp_sensor_enabled: %d\r\n", get_temp_sensor_enabled());
 
 

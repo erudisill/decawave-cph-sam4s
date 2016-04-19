@@ -80,7 +80,9 @@ bool get_standby_x_gyro_enabled(void);
 bool get_standby_y_gyro_enabled(void);
 bool get_standby_z_gyro_enabled(void);
 uint8_t get_motion_interrupt_enabled(void);
-
+bool get_accel_intel_enabled(void);
+bool get_accel_intel_mode(void);
+uint8_t get_motion_threshold(void);
 
 bool imu_irq_ready(void);
 void imu_irq_reset(void);

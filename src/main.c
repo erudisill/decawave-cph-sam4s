@@ -93,8 +93,6 @@ void cph_board_init(void) {
 	sysclk_init();
 	board_init();
 
-
-
 	cpu_irq_enable();
 	cph_usb_init();
 	cph_millis_init();
