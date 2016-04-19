@@ -1,6 +1,8 @@
 #include <cph.h>
 #include <deca_device_api.h>
 #include <string.h>
+#include "imu.h"
+#include "gimbal.h"
 
 
 cph_config_t * cph_config;
@@ -93,7 +95,7 @@ void cph_board_init(void) {
 
 #if defined(REV_ANCHOR_A_01)
 	cpu_irq_enable();
-	stdio_usb_init();
+	cph_usb_init();
 #else
 	cph_stdio_init();
 #endif
@@ -101,14 +103,19 @@ void cph_board_init(void) {
 	cph_millis_init();
 
 	init_config();
+
+#if defined(IMU_ENABLE)
+	imu_init_wom();
+//	gimbal_init();
+
+#endif
+
+#if defined(BARO_ENABLE)
+	baro_init();
+#endif
+
 }
 
-volatile bool rx_notify = false;
-
-void usb_rx_notify(void)
-{
-	rx_notify = true;
-}
 
 int main(void) {
 
@@ -116,18 +123,25 @@ int main(void) {
 
 	print_greeting();
 
+#if defined(IMU_ENABLE)
+	// todo: the following function blocks and runs the imu wake on motion code
+	run_imu_test();
+#endif
+
 	// Blink LED for 5 seconds
 	pio_set_pin_high(LED_STATUS0_IDX);
-	for (int i = 0; i < (5 * 8); i++) {
+	for (int i = 0; i < (10 * 8); i++) {
+
 		uint8_t c = 0x00;
+
 #if defined(REV_ANCHOR_A_01)
-		if(rx_notify == true) {
-			rx_notify = false;
-			stdio_usb_getchar(NULL, &c);
+		if (cph_usb_data_ready()) {
+			cph_usb_data_read(&c);
 		}
 #else
 		uart_read(CONSOLE_UART, &c);
 #endif
+
 		if (c == 'c') {
 			configure_main();
 			init_config();
@@ -154,4 +168,6 @@ int main(void) {
 		sender_run();
 	}
 }
+
+
 

@@ -47,4 +47,7 @@
 #define CONF_BOARD_UART_CONSOLE
 #define CONF_BOARD_LEDS
 
+#define CONF_BOARD_TWI0
+#define CONF_BOARD_TWI1
+
 #endif /* CONF_BOARD_H_INCLUDED */

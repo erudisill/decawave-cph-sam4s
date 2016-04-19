@@ -27,6 +27,7 @@
 #include <cph_stdio.h>
 #include <cph_deca.h>
 #include <cph_utils.h>
+#include <cph_usb.h>
 #include <globals.h>
 #include <configure.h>
 
@@ -55,5 +56,7 @@ extern volatile bool rx_notify;
 extern void usb_rx_notify(void);
 
 void cph_board_init(void);
+
+
 
 #endif /* SRC_CPH_H_ */
