@@ -11,6 +11,8 @@
 #include <cph.h>
 
 void cph_stdio_init(void);
+bool cph_stdio_dataready(void);
+void cph_stdio_readc(uint8_t *data);
 
 
 #endif /* SRC_CPH_CPH_STDIO_H_ */

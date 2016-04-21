@@ -94,14 +94,14 @@ void cph_board_init(void) {
 	board_init();
 
 	cpu_irq_enable();
-	cph_usb_init();
+	cph_stdio_init();
 	cph_millis_init();
 
 	init_config();
 
 #if defined(IMU_ENABLE)
-	imu_init_wom();
-//	gimbal_init();
+	imu_init();
+
 
 #endif
 
@@ -118,7 +118,7 @@ int main(void) {
 	print_greeting();
 
 	// todo: the following function blocks and runs the imu wake on motion code
-	run_imu_test();
+	imu_run_console();
 
 	// Blink LED for 5 seconds
 	pio_set_pin_high(LED_STATUS0_IDX);
@@ -126,8 +126,8 @@ int main(void) {
 
 		uint8_t c = 0x00;
 
-		if (cph_usb_data_ready()) {
-			cph_usb_data_read(&c);
+		if (cph_stdio_dataready()) {
+			cph_stdio_readc(&c);
 		}
 
 		if (c == 'c') {
