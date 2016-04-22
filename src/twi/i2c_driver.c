@@ -205,7 +205,8 @@ static bool timed_out(void)
 {
 	bool timeout = false;
 
-	if(_timeout >= _max_wait_millis) {
+//	if(_timeout >= _max_wait_millis) {
+	if(_timeout <= cph_get_millis()) {
 
 //		printf("idle_timeout.\r\n");
 		timeout = true;

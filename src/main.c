@@ -101,8 +101,6 @@ void cph_board_init(void) {
 
 #if defined(IMU_ENABLE)
 	imu_init();
-
-
 #endif
 
 #if defined(BARO_ENABLE)
