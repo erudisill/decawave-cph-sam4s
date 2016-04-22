@@ -17,7 +17,10 @@ extern volatile bool wake_event_received;
 #define IMU_BUFFER_LEN				14
 #define IMU_INTERRUPT_ENABLE		1
 
-void run_imu_test(void);
+
+void imu_run(void);
+void imu_run_sleeptest(void);
+void imu_run_console(void);
 
 void imu_init_default(void);
 void imu_init_wom(void);
@@ -80,10 +83,15 @@ bool get_standby_x_gyro_enabled(void);
 bool get_standby_y_gyro_enabled(void);
 bool get_standby_z_gyro_enabled(void);
 uint8_t get_motion_interrupt_enabled(void);
-
+bool get_accel_intel_enabled(void);
+bool get_accel_intel_mode(void);
+uint8_t get_motion_threshold(void);
 
 bool imu_irq_ready(void);
 void imu_irq_reset(void);
+
+
+
 
 
 

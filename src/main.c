@@ -93,21 +93,15 @@ void cph_board_init(void) {
 	sysclk_init();
 	board_init();
 
-#if defined(REV_ANCHOR_A_01)
 	cpu_irq_enable();
-	cph_usb_init();
-#else
 	cph_stdio_init();
-#endif
 
 	cph_millis_init();
 
 	init_config();
 
 #if defined(IMU_ENABLE)
-	imu_init_wom();
-//	gimbal_init();
-
+	imu_init();
 #endif
 
 #if defined(BARO_ENABLE)
@@ -125,7 +119,7 @@ int main(void) {
 
 #if defined(IMU_ENABLE)
 	// todo: the following function blocks and runs the imu wake on motion code
-	run_imu_test();
+	imu_run_console();
 #endif
 
 	// Blink LED for 5 seconds
@@ -134,13 +128,9 @@ int main(void) {
 
 		uint8_t c = 0x00;
 
-#if defined(REV_ANCHOR_A_01)
-		if (cph_usb_data_ready()) {
-			cph_usb_data_read(&c);
+		if (cph_stdio_dataready()) {
+			cph_stdio_readc(&c);
 		}
-#else
-		uart_read(CONSOLE_UART, &c);
-#endif
 
 		if (c == 'c') {
 			configure_main();

@@ -8,8 +8,8 @@
 
 //#define REV_A_02
 //#define REV_A_03
-#define REV_B_02
-//#define REV_ANCHOR_A_01
+//#define REV_B_02
+#define REV_ANCHOR_A_01
 
 #ifdef REV_A_02
 #define BOARD_REV_MAJOR		0x0A
@@ -277,6 +277,13 @@ extern void imu_process_interrupt(uint32_t id, uint32_t mask);
 #define PINS_TWI0_TYPE		PIO_PERIPH_A
 #define PINS_TWI0_MASK 		(PIO_PA4A_TWCK0 | PIO_PA3A_TWD0)
 #define PINS_TWI0_ATTR		PIO_DEFAULT
+
+#define IMU_WAKEUP_PIO				PIOA
+#define IMU_WAKEUP_PIO_IDX			PIO_PA2_IDX
+#define IMU_WAKEUP_MASK				PIO_PA2
+#define IMU_WAKEUP_TYPE				PIO_OUTPUT_0
+#define IMU_WAKEUP_ATTR				(PIO_DEFAULT)
+
 
 
 // Bosch MPL3115A Barometric Sensor TWI Interface
