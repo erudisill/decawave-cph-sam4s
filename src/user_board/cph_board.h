@@ -7,9 +7,9 @@
 #include "pio.h"
 
 //#define REV_A_02
-//#define REV_A_03
+#define REV_A_03
 //#define REV_B_02
-#define REV_ANCHOR_A_01
+//#define REV_ANCHOR_A_01
 
 #ifdef REV_A_02
 #define BOARD_REV_MAJOR		0x0A

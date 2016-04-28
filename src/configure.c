@@ -383,6 +383,60 @@ static bool test_flash(void) {
 	return true;
 }
 
+static bool test_wakeup(void) {
+
+	TRACE("\r\n\r\nGoing to sleep...\r\n");
+
+
+	// Set pin as input
+	pio_configure(PIOA, PIO_INPUT, PIO_PA0, 0);
+	PIOA->PIO_PPDER |= PIO_PA0;
+
+	// Setup RTT to count every millisecond
+	rtt_init(RTT, 32);
+	NVIC_DisableIRQ(RTT_IRQn);
+	NVIC_ClearPendingIRQ(RTT_IRQn);
+	NVIC_SetPriority(RTT_IRQn, 0);
+	NVIC_EnableIRQ(RTT_IRQn);
+	rtt_enable_interrupt(RTT, RTT_MR_ALMIEN);
+
+#define WAKEUP_BACKUP
+//#define WAKEUP_WAIT
+
+#ifdef WAKEUP_BACKUP
+	supc_set_wakeup_mode(SUPC, SUPC_WUMR_RTTEN_ENABLE);
+	supc_set_wakeup_inputs(SUPC, SUPC_WUIR_WKUPEN0_ENABLE, SUPC_WUIR_WKUPT0_HIGH);
+#endif
+#ifdef WAKEUP_WAIT
+	pmc_set_fast_startup_input(PMC_FSMR_RTTAL | PMC_FSMR_FSTT0);
+#endif
+
+	// Wakeup in 5 seconds
+	uint32_t rttv = rtt_read_timer_value(RTT);
+	uint32_t wait_value = rttv + 5000;
+
+	cph_millis_delay(1);
+
+	rtt_write_alarm_time(RTT, wait_value);
+
+	cpu_irq_disable();
+
+#ifdef WAKEUP_WAIT
+	pmc_sleep(SAM_PM_SMODE_WAIT);
+#endif
+#ifdef WAKEUP_BACKUP
+	pmc_sleep(SAM_PM_SMODE_BACKUP);
+#endif
+
+	cpu_irq_enable();
+
+	cph_millis_delay(1);
+
+	TRACE("Awake!\r\n");
+
+	return true;
+}
+
 void configure_main(void) {
 
 	uint8_t buffer[10];
@@ -410,6 +464,7 @@ void configure_main(void) {
 		TRACE("S) Exit and run as SENDER\r\n");
 		TRACE("D) Exit and run with compiled DEFAULTS\r\n");
 		TRACE("F) Test flash\r\n");
+		TRACE("W) Test wakeupr\n");
 
 		TRACE("\r\nCurrent Config : ");
 		configure_print_dwt_config(&cph_config->dwt_config);
@@ -470,6 +525,9 @@ void configure_main(void) {
 		}
 		else if (choice == 'f' || choice == 'F') {
 			test_flash();
+		}
+		else if (choice == 'w' || choice == 'W') {
+			test_wakeup();
 		}
 		else {
 			TRACE("NOT VALID\r\n");
