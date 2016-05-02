@@ -25,6 +25,8 @@ void twr_anchor_run(void);
 void twr_tag_run(void);
 void listener_run(void);
 void sender_run(void);
+void cs_listener_run(void);
+void cs_sender_run(void);
 
 #define DEFAULT_RX_TIMEOUT	10000
 #define DEFAULT_TX_TIMEOUT	1000
@@ -52,6 +54,8 @@ void sender_run(void);
 /* UWB microsecond (uus) to device time unit (dtu, around 15.65 ps) conversion factor.
  * 1 uus = 512 / 499.2 µs and 1 µs = 499.2 * 128 dtu. */
 #define UUS_TO_DWT_TIME 65536
+#define MS_TO_DWT_TIME 63897600
+
 
 /* This is the delay from the end of the frame transmission to the enable of the receiver, as programmed for the DW1000's wait for response feature. */
 //#define POLL_TX_TO_RESP_RX_DLY_UUS 150
@@ -124,6 +128,8 @@ enum {
 	CPH_MODE_TAG = 0x02,
 	CPH_MODE_LISTENER = 0x03,
 	CPH_MODE_SENDER = 0x04,
+	CPH_MODE_SYNC_LISTENER = 0x05,
+	CPH_MODE_SYNC_SENDER = 0x06,
 	CPH_MODE_COORD = 0x80
 };
 
@@ -143,6 +149,10 @@ enum {
 
 #define FUNC_SURV_REQU				0x01
 #define FUNC_SURV_RESP				0x21
+
+#define FUNC_CS_SYNC				0xD0
+#define FUNC_CS_TAG					0xD1
+#define FUNC_CS_COORD				0xD2
 
 #define CPH_MAX_MSG_SIZE		128
 
@@ -183,6 +193,12 @@ typedef struct PACKED {
 	uint32_t finalTxTs;
 	uint16_t mac_cs;
 } cph_deca_msg_range_final_t;
+
+typedef struct PACKED {
+	cph_deca_msg_header_t header;
+	uint32_t blinkTxTs;
+	uint16_t mac_cs;
+} cph_deca_msg_blink_t;
 
 typedef struct PACKED {
 	cph_deca_msg_header_t header;
@@ -279,6 +295,7 @@ uint32_t cph_deca_send_immediate();
 uint32_t cph_deca_send_delayed();
 uint32_t cph_deca_send_delayed_response_expected();
 uint32_t cph_deca_send_response_expected();
+void cph_deca_force_wakeup();
 void cph_deca_init_device();
 void cph_deca_init_network(uint16_t panid, uint16_t shortid);
 void cph_deca_isr_handler(uint32_t id, uint32_t mask);

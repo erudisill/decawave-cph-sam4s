@@ -254,7 +254,6 @@ error Undefined revision.
 //#define DW_IRQ_ATTR					(PIO_IT_HIGH_LEVEL | PIO_DEFAULT)
 #define DW_IRQ_FLAGS				(DW_IRQ_TYPE | DW_IRQ_ATTR)
 
-
 // Invensense IMU TWI interface
 
 extern void imu_process_interrupt(uint32_t id, uint32_t mask);

@@ -15,6 +15,12 @@
 #include <deca_regs.h>
 #include <deca_sleep.h>
 
+// Experimental code, work in progress ... We'll get here eventually
+//#define EXPERIMENTAL_STATE_MACHINE
+
+#define INTERRUPT_POLLING
+//#define STATUS_POLLING
+
 static cph_deca_msg_range_response_t tx_range_response = {
 MAC_FC,			// mac.ctl - data frame, frame pending, pan id comp, short dest, short source
 		0,				// mac.seq
@@ -102,8 +108,10 @@ static uint64 resp_tx_ts;
 /* List of paired tags */
 static cph_deca_pair_info_t paired_tags[MAX_TAGS];
 
+#ifdef EXPERIMENTAL_STATE_MACHINE
 static bool is_waiting_for_tx_fin = false;
 static bool is_response_expected = false;
+#endif
 
 /* Declaration of static functions. */
 static uint64 get_rx_timestamp_u64(void);
@@ -204,6 +212,8 @@ static double range_with_anchor(uint16_t shortid, uint16_t reps, uint16_t period
 
 	return accum / count;
 }
+
+#ifdef EXPERIMENTAL_STATE_MACHINE
 
 static void start_rx(void) {
 	is_waiting_for_tx_fin = false;
@@ -358,6 +368,7 @@ static void handle_event(const cph_deca_event_t * event) {
 		}
 	}
 }
+#endif
 
 void twr_anchor_run(void) {
 	uint32_t announce_coord_ts = 0;
@@ -400,7 +411,7 @@ void twr_anchor_run(void) {
 	}
 
 
-#if 0
+#ifdef EXPERIMENTAL_STATE_MACHINE
 
 	// Attach DW interrupt events and callbacks and enable local interrupt pin
 	cph_deca_isr_configure();
@@ -421,7 +432,7 @@ void twr_anchor_run(void) {
 
 
 
-#elif 1
+#elif defined(INTERRUPT_POLLING)
 
 	// Attach DW interrupt events and callbacks and enable local interrupt pin
 	cph_deca_isr_configure();
@@ -625,7 +636,7 @@ void twr_anchor_run(void) {
 			}
 		}
 	}
-#elif 0
+#elif defined(STATUS_POLLING)
 	/* Loop forever responding to ranging requests. */
 	while (1) {
 
@@ -814,6 +825,8 @@ void twr_anchor_run(void) {
 			}
 		}
 	}
+#else
+#error Pick a polling method: INTERRUPT or STATUS
 #endif
 }
 

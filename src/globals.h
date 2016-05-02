@@ -11,7 +11,7 @@
 
 #include <deca_device_api.h>
 
-#define G_CONFIG_COUNT		3
+#define G_CONFIG_COUNT		4
 #define G_CONFIG_USER_IDX	(G_CONFIG_COUNT - 1)
 
 

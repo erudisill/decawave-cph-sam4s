@@ -47,6 +47,10 @@ static void init_config(void) {
 		cph_config->mode = CPH_MODE_LISTENER;
 #elif defined(SENDER)
 		cph_config->mode = CPH_MODE_SENDER;
+#elif defined(SYNC_LISTENER)
+		cph_config->mode = CPH_MODE_SYNC_LISTENER;
+#elif defined(SYNC_SENDER)
+		cph_config->mode = CPH_MODE_SYNC_SENDER;
 #endif
 		memcpy(&cph_config->dwt_config, &g_dwt_configs[0], sizeof(dwt_config_t));
 		cph_config->sender_period = POLL_DELAY_MS;
@@ -80,6 +84,10 @@ void print_greeting() {
 		TRACE("Mode: LISTENER\r\n");
 	} else if (cph_config->mode == CPH_MODE_SENDER) {
 		TRACE("Mode: SENDER\r\n");
+	} else if (cph_config->mode == CPH_MODE_SYNC_LISTENER) {
+		TRACE("Mode: SYNC LISTENER\r\n");
+	} else if (cph_config->mode == CPH_MODE_SYNC_SENDER) {
+		TRACE("Mode: SYNC SENDER\r\n");
 	} else {
 		TRACE("Mode: UNKNOWN!\r\n");
 	}
@@ -124,7 +132,7 @@ int main(void) {
 
 	// Blink LED for 5 seconds
 	pio_set_pin_high(LED_STATUS0_IDX);
-	for (int i = 0; i < (10 * 8); i++) {
+	for (int i = 0; i < (5 * 8); i++) {
 
 		uint8_t c = 0x00;
 
@@ -156,6 +164,10 @@ int main(void) {
 		listener_run();
 	} else if (cph_config->mode == CPH_MODE_SENDER) {
 		sender_run();
+	} else if (cph_config->mode == CPH_MODE_SYNC_LISTENER) {
+		cs_listener_run();
+	} else if (cph_config->mode == CPH_MODE_SYNC_SENDER) {
+		cs_sender_run();
 	}
 }
 

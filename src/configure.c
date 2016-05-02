@@ -14,43 +14,25 @@ static char choice = 0;
 static int config_idx = -1;
 static char buffer[BUFFER_SIZE];
 
-
 #define PLEN_COUNT 8
 static int plen_values[] = {
-	DWT_PLEN_4096,
-	DWT_PLEN_2048,
-	DWT_PLEN_1536,
-	DWT_PLEN_1024,
-	DWT_PLEN_512,
-	DWT_PLEN_256,
-	DWT_PLEN_128,
-	DWT_PLEN_64
-};
-static int plen_inputs[] = {
-	4096,
-	2048,
-	1536,
-	1024,
-	512,
-	256,
-	128,
-	64
-};
-
+DWT_PLEN_4096,
+DWT_PLEN_2048,
+DWT_PLEN_1536,
+DWT_PLEN_1024,
+DWT_PLEN_512,
+DWT_PLEN_256,
+DWT_PLEN_128,
+DWT_PLEN_64 };
+static int plen_inputs[] = { 4096, 2048, 1536, 1024, 512, 256, 128, 64 };
 
 #define PAC_COUNT 4
 static int pac_values[] = {
-		DWT_PAC8,
-		DWT_PAC16,
-		DWT_PAC32,
-		DWT_PAC64
-};
-static int pac_inputs[] = {
-	8,
-	16,
-	32,
-	64
-};
+DWT_PAC8,
+DWT_PAC16,
+DWT_PAC32,
+DWT_PAC64 };
+static int pac_inputs[] = { 8, 16, 32, 64 };
 
 static bool get_line(uint8_t * buf, int max_len) {
 	int i = 0;
@@ -80,52 +62,45 @@ void configure_print_dwt_config(dwt_config_t * source) {
 		TRACE("PRF_16M  ");
 	else if (source->prf == DWT_PRF_64M) {
 		TRACE("PRF_64M  ");
-	}
-	else {
+	} else {
 		TRACE("PRF_??  ");
 	}
 
-	for (i=0;i<PLEN_COUNT;i++) {
+	for (i = 0; i < PLEN_COUNT; i++) {
 		if (source->txPreambLength == plen_values[i]) {
 			TRACE("PLEN_%-4d  ", plen_inputs[i]);
 			break;
 		}
 	}
-	if (i==PLEN_COUNT)
+	if (i == PLEN_COUNT)
 		TRACE("PLEN_??  ");
 
-	for (i=0;i<PAC_COUNT;i++) {
+	for (i = 0; i < PAC_COUNT; i++) {
 		if (source->rxPAC == pac_values[i]) {
 			TRACE("PAC_%-2d  ", pac_inputs[i]);
 			break;
 		}
 	}
-	if (i==PAC_COUNT)
+	if (i == PAC_COUNT)
 		TRACE("PAC_??  ");
 
 	TRACE("txCode:%02X  rxCode:%02X  nsSFD:%02X  ", source->txCode, source->rxCode, source->nsSFD);
 
-
 	if (source->dataRate == DWT_BR_110K) {
 		TRACE("BR_110K  ");
-	}
-	else if (source->dataRate == DWT_BR_850K) {
+	} else if (source->dataRate == DWT_BR_850K) {
 		TRACE("BR_850K  ");
-	}
-	else if (source->dataRate == DWT_BR_6M8) {
+	} else if (source->dataRate == DWT_BR_6M8) {
 		TRACE("BR_6M8   ");
-	}
-	else {
+	} else {
 		TRACE("BR_??  ");
 	}
 
 	if (source->phrMode == DWT_PHRMODE_STD) {
 		TRACE("PHRMODE_STD  ");
-	}
-	else if (source->phrMode == DWT_PHRMODE_EXT) {
+	} else if (source->phrMode == DWT_PHRMODE_EXT) {
 		TRACE("PHRMODE_EXT  ");
-	}
-	else {
+	} else {
 		TRACE("PHRMODE_??");
 	}
 
@@ -137,34 +112,31 @@ static bool parse_config_tuples(char * tuples, dwt_config_t * target) {
 	int j = 0;
 	bool valid = true;
 
-	if (sscanf(tuples, "%d %d %d %d %d %d %d %d %d %d", &ch, &prf, &plen, &pac, &txcode, &rxcode, &nssfd, &datarate, &phrmode, &sfdto) != 10) {
+	if (sscanf(tuples, "%d %d %d %d %d %d %d %d %d %d", &ch, &prf, &plen, &pac, &txcode, &rxcode, &nssfd, &datarate, &phrmode,
+			&sfdto) != 10) {
 		TRACE("BAD INPUT\r\n");
 		valid = false;
-	}
-	else {
+	} else {
 		target->chan = ch;
 		target->txCode = txcode;
 		target->rxCode = rxcode;
 		target->nsSFD = nssfd;
 		target->sfdTO = sfdto;
 
-
 		// Parse PRF
 		//
 		if (prf == 64) {
 			target->prf = DWT_PRF_64M;
-		}
-		else if (prf == 16) {
+		} else if (prf == 16) {
 			target->prf = DWT_PRF_16M;
-		}
-		else {
+		} else {
 			TRACE("BAD PRF: 16 or 64\r\n");
 			valid = false;
 		}
 
 		// Parse PLEN
 		//
-		for (j=0;j<PLEN_COUNT;j++) {
+		for (j = 0; j < PLEN_COUNT; j++) {
 			if (plen == plen_inputs[j]) {
 				target->txPreambLength = plen_values[j];
 				break;
@@ -175,10 +147,9 @@ static bool parse_config_tuples(char * tuples, dwt_config_t * target) {
 			valid = false;
 		}
 
-
 		// Parse PAC
 		//
-		for (j=0;j<PAC_COUNT;j++) {
+		for (j = 0; j < PAC_COUNT; j++) {
 			if (pac == pac_inputs[j]) {
 				target->rxPAC = pac_values[j];
 				break;
@@ -189,32 +160,25 @@ static bool parse_config_tuples(char * tuples, dwt_config_t * target) {
 			valid = false;
 		}
 
-
 		// Parse Data Rate
 		//
 		if (datarate == 110) {
 			target->dataRate = DWT_BR_110K;
-		}
-		else if (datarate == 850) {
+		} else if (datarate == 850) {
 			target->dataRate = DWT_BR_850K;
-		}
-		else if (datarate == 6) {
+		} else if (datarate == 6) {
 			target->dataRate = DWT_BR_6M8;
-		}
-		else {
+		} else {
 			TRACE("BAD DATA RATE: 110, 850, or 6\r\n");
 			valid = false;
 		}
 
-
 		// Parse PHRMODE
 		if (phrmode == 0) {
 			target->phrMode = DWT_PHRMODE_STD;
-		}
-		else if (phrmode == 1) {
+		} else if (phrmode == 1) {
 			target->phrMode = DWT_PHRMODE_EXT;
-		}
-		else {
+		} else {
 			TRACE("BAD PHRMODE: 0 for STD, 1 for EXT\r\n");
 			valid = false;
 		}
@@ -312,8 +276,7 @@ static bool configure_parameters(void) {
 
 		if (valid == false) {
 			TRACE("BAD INPUT\r\n");
-		}
-		else {
+		} else {
 			TRACE("CHANGE ACCEPTED\r\n");
 		}
 	}
@@ -346,18 +309,16 @@ static bool test_flash(void) {
 		if (choice == 'i' || choice == 'I') {
 			config = cph_config_init();
 			printf("config: ");
-			for (int i=0;i<sizeof(cph_config_t);i++)
-				printf("%02X ", ((uint8_t*)config)[i]);
+			for (int i = 0; i < sizeof(cph_config_t); i++)
+				printf("%02X ", ((uint8_t*) config)[i]);
 			printf("\r\n");
-		}
-		else if (choice == 'r' || choice == 'R') {
+		} else if (choice == 'r' || choice == 'R') {
 			config = cph_config_read();
 			printf("config: ");
-			for (int i=0;i<sizeof(cph_config_t);i++)
-				printf("%02X ", ((uint8_t*)config)[i]);
+			for (int i = 0; i < sizeof(cph_config_t); i++)
+				printf("%02X ", ((uint8_t*) config)[i]);
 			printf("\r\n");
-		}
-		else if (choice == 'w' || choice == 'W') {
+		} else if (choice == 'w' || choice == 'W') {
 			config->magic[0] = test++;
 			config->magic[1] = test++;
 			config->magic[2] = test++;
@@ -370,11 +331,10 @@ static bool test_flash(void) {
 			config->shortid = test++;
 			cph_config_write();
 			printf("config: ");
-			for (int i=0;i<sizeof(cph_config_t);i++)
-				printf("%02X ", ((uint8_t*)config)[i]);
+			for (int i = 0; i < sizeof(cph_config_t); i++)
+				printf("%02X ", ((uint8_t*) config)[i]);
 			printf("\r\n");
-		}
-		else {
+		} else {
 			TRACE("INVALID CHOICE\r\n");
 		}
 
@@ -386,7 +346,6 @@ static bool test_flash(void) {
 static bool test_wakeup(void) {
 
 	TRACE("\r\n\r\nGoing to sleep...\r\n");
-
 
 	// Set pin as input
 	pio_configure(PIOA, PIO_INPUT, PIO_PA0, 0);
@@ -419,7 +378,8 @@ static bool test_wakeup(void) {
 
 	rtt_write_alarm_time(RTT, wait_value);
 
-	cpu_irq_disable();
+	cpu_irq_disable()
+	;
 
 #ifdef WAKEUP_WAIT
 	pmc_sleep(SAM_PM_SMODE_WAIT);
@@ -428,11 +388,78 @@ static bool test_wakeup(void) {
 	pmc_sleep(SAM_PM_SMODE_BACKUP);
 #endif
 
-	cpu_irq_enable();
+	cpu_irq_enable()
+	;
 
 	cph_millis_delay(1);
 
 	TRACE("Awake!\r\n");
+
+	return true;
+}
+
+static bool test_sync(void) {
+	uint8_t ts[8];
+	int i;
+
+	TRACE("\r\nTesting Sync\r\n");
+	TRACE("Press x to exit.\r\n");
+	TRACE("Press any key to start.\r\n");
+
+	cph_deca_spi_init();
+
+	// Setup DECAWAVE
+	cph_deca_force_wakeup();
+	cph_deca_init_device();
+	cph_deca_init_network(cph_config->panid, cph_config->shortid);
+
+	uint32_t id = dwt_readdevid();
+	printf("Device ID: %08X\r\n", id);
+
+	while (1) {
+		choice = getchar() & 0xFF;
+
+		if (choice == 'x' || choice == 'X') {
+			TRACE("Exiting to Main Menu.\r\n");
+			break;
+		}
+
+		TRACE("\r\nStart.\r\n");
+
+		cph_millis_delay(1000);
+
+		// grab starting timestamp
+		dwt_readsystime(ts);
+		TRACE("start sys: ");
+		for (i = 4; i >= 0; i--) {
+			TRACE("%02X", ts[i]);
+		}
+		TRACE("\r\n");
+
+		uint32_t ec_ctrl;
+		dwt_readfromdevice(EXT_SYNC_ID, EC_CTRL_OFFSET, 4, (uint8_t*) &ec_ctrl);
+
+		ec_ctrl &= EC_CTRL_WAIT_MASK;			// clear WAIT field
+		ec_ctrl |= EC_CTRL_OSTRM | (33 << 3);	// turn on OSTRM and put 33 in WAIT field
+		dwt_writetodevice(EXT_SYNC_ID, EC_CTRL_OFFSET, 4, (uint8_t*) &ec_ctrl);
+
+		cph_millis_delay(3000);
+
+		// Huzzah! It appears we can leave OSTRM turned on and then any high level on SYNC will trigger reset.
+		//         Probably dangerous.  Will likely need a pull down.  But shows promise.
+//		ec_ctrl &= (~EC_CTRL_OSTRM);			// turn off OSTRM
+//		dwt_writetodevice(EXT_SYNC_ID, EC_CTRL_OFFSET, 4, (uint8_t*) &ec_ctrl);
+
+		dwt_readsystime(ts);
+		TRACE("end   sys: ");
+		for (i = 4; i >= 0; i--) {
+			TRACE("%02X", ts[i]);
+		}
+		TRACE("\r\n");
+
+		TRACE("Finished.\r\n");
+
+	}
 
 	return true;
 }
@@ -449,7 +476,7 @@ void configure_main(void) {
 		TRACE("\r\n\r\nMain Menu\r\n");
 		TRACE("==============\r\n");
 
-		for (int i=0;i<G_CONFIG_COUNT - 1;i++) {
+		for (int i = 0; i < G_CONFIG_COUNT - 1; i++) {
 			TRACE("%d) ", i);
 			configure_print_dwt_config(&g_dwt_configs[i]);
 			TRACE("\r\n");
@@ -462,17 +489,19 @@ void configure_main(void) {
 		TRACE("T) Exit and run as TAG\r\n");
 		TRACE("L) Exit and run as LISTENER\r\n");
 		TRACE("S) Exit and run as SENDER\r\n");
+		TRACE("M) Exit and run as SYNC LISTENER\r\n");
+		TRACE("N) Exit and run as SYNC SENDER\r\n");
 		TRACE("D) Exit and run with compiled DEFAULTS\r\n");
 		TRACE("F) Test flash\r\n");
-		TRACE("W) Test wakeupr\n");
+		TRACE("Y) Test Sync\r\n");
+		TRACE("W) Test wakeup\r\n");
 
 		TRACE("\r\nCurrent Config : ");
 		configure_print_dwt_config(&cph_config->dwt_config);
 		TRACE("\r\nNew Config     : ");
 		if (config_idx == -1) {
 			TRACE("none selected");
-		}
-		else {
+		} else {
 			configure_print_dwt_config(&g_dwt_configs[config_idx]);
 		}
 		TRACE("\r\n");
@@ -485,51 +514,50 @@ void configure_main(void) {
 		if (choice >= '0' && choice <= ('0' + G_CONFIG_COUNT - 1 - 1)) {
 			TRACE("VALID\r\n");
 			config_idx = choice - '0';
-		}
-		else if (choice == 'u' || choice == 'U') {
+		} else if (choice == 'u' || choice == 'U') {
 			configure_user_defined();
-		}
-		else if (choice == 'p' || choice == 'P') {
+		} else if (choice == 'p' || choice == 'P') {
 			configure_parameters();
-		}
-		else if (choice == 'a' || choice == 'A') {
+		} else if (choice == 'a' || choice == 'A') {
 			cph_config->mode = CPH_MODE_ANCHOR;
 			TRACE("Exiting as CPH_MODE_ANCHOR\r\n");
 			break;
-		}
-		else if (choice == 'c' || choice == 'C') {
+		} else if (choice == 'c' || choice == 'C') {
 			cph_config->mode = CPH_MODE_COORD;
 			TRACE("Exiting as CPH_MODE_COORD\r\n");
 			break;
-		}
-		else if (choice == 't' || choice == 'T') {
+		} else if (choice == 't' || choice == 'T') {
 			cph_config->mode = CPH_MODE_TAG;
 			TRACE("Exiting as CPH_MODE_TAG\r\n");
 			break;
-		}
-		else if (choice == 'l' || choice == 'L') {
+		} else if (choice == 'l' || choice == 'L') {
 			cph_config->mode = CPH_MODE_LISTENER;
 			TRACE("Exiting as CPH_MODE_LISTENER\r\n");
 			break;
-		}
-		else if (choice == 's' || choice == 'S') {
+		} else if (choice == 's' || choice == 'S') {
 			cph_config->mode = CPH_MODE_SENDER;
 			TRACE("Exiting as CPH_MODE_SENDER\r\n");
 			break;
-		}
-		else if (choice == 'd' || choice == 'D') {
+		} else if (choice == 'm' || choice == 'M') {
+			cph_config->mode = CPH_MODE_SYNC_LISTENER;
+			TRACE("Exiting as CPH_MODE_SYNC_LISTENER\r\n");
+			break;
+		} else if (choice == 'n' || choice == 'N') {
+			cph_config->mode = CPH_MODE_SYNC_SENDER;
+			TRACE("Exiting as CPH_MODE_SYNC_SENDER\r\n");
+			break;
+		} else if (choice == 'd' || choice == 'D') {
 			memset(cph_config, 0, sizeof(cph_config_t));
 			cph_config_write();
 			TRACE("Exiting as compiled DEFAULT\r\n");
 			break;
-		}
-		else if (choice == 'f' || choice == 'F') {
+		} else if (choice == 'f' || choice == 'F') {
 			test_flash();
-		}
-		else if (choice == 'w' || choice == 'W') {
+		} else if (choice == 'w' || choice == 'W') {
 			test_wakeup();
-		}
-		else {
+		} else if (choice == 'y' || choice == 'Y') {
+			test_sync();
+		} else {
 			TRACE("NOT VALID\r\n");
 		}
 	};
@@ -544,7 +572,7 @@ void configure_main(void) {
 	TRACE("done.\r\n");
 
 	TRACE("Starting in ");
-	for (int i=3;i>0;i--) {
+	for (int i = 3; i > 0; i--) {
 		TRACE("%d ", i);
 		cph_millis_delay(1000);
 	}

@@ -403,17 +403,18 @@ void twr_tag_run(void) {
 	cph_deca_isr_disable();
 
 	// Wakeup if necessary
-	reset_DW1000();
-	spi_set_rate_low();
-	id = dwt_readdevid();
-	if (id == 0xFFFFFFFF) {
-		TRACE("DW asleep..waking\r\n");
-		// asleep, wakeup
-		pio_set_pin_high(DW_WAKEUP_PIO_IDX);
-		cph_millis_delay(1);
-		pio_set_pin_low(DW_WAKEUP_PIO_IDX);
-		cph_millis_delay(1);
-	}
+	cph_deca_force_wakeup();
+//	reset_DW1000();
+//	spi_set_rate_low();
+//	id = dwt_readdevid();
+//	if (id == 0xFFFFFFFF) {
+//		TRACE("DW asleep..waking\r\n");
+//		// asleep, wakeup
+//		pio_set_pin_high(DW_WAKEUP_PIO_IDX);
+//		cph_millis_delay(1);
+//		pio_set_pin_low(DW_WAKEUP_PIO_IDX);
+//		cph_millis_delay(1);
+//	}
 
 	// Setup DECAWAVE
 	cph_deca_init_device();

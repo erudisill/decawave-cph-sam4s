@@ -123,6 +123,8 @@ void listener_run(void) {
 
 	pio_enable_interrupt(DW_IRQ_PIO, DW_IRQ_MASK);
 
+	dwt_setrxtimeout(0);
+
 	dwt_rxenable(0);
 
 	while (1) {

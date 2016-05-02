@@ -157,6 +157,20 @@ cph_deca_msg_header_t * cph_deca_read_frame(uint8_t * rx_buffer, uint32_t *frame
 
 }
 
+void cph_deca_force_wakeup() {
+	reset_DW1000();
+	spi_set_rate_low();
+	uint32_t id = dwt_readdevid();
+	if (id == 0xFFFFFFFF) {
+		TRACE("DW asleep..waking\r\n");
+		// asleep, wakeup
+		pio_set_pin_high(DW_WAKEUP_PIO_IDX);
+		cph_millis_delay(1);
+		pio_set_pin_low(DW_WAKEUP_PIO_IDX);
+		cph_millis_delay(1);
+	}
+}
+
 void cph_deca_init_device() {
 	dwt_txconfig_t txconfig;
 
