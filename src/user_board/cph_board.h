@@ -6,6 +6,8 @@
 #include "exceptions.h"
 #include "pio.h"
 
+#define SAM4S16C
+
 //#define REV_A_02
 //#define REV_A_03
 //#define REV_B_02
@@ -86,6 +88,7 @@
 /*----------------------------------------------------------------------------*/
 
 #if defined(REV_ANCHOR_A_01)
+#define IMU_RTT_ALARM_MS	5000
 #define LED_STATUS0_IDX		PIO_PB3_IDX
 #define PINS_LED0_PIO		PIOB
 #define PINS_LED0_TYPE		PIO_OUTPUT_0
@@ -267,7 +270,6 @@ extern void imu_process_interrupt(uint32_t id, uint32_t mask);
 #define IMU_IRQ_IDX					PIO_PA2_IDX
 #define IMU_IRQ_MASK				PIO_PA2
 #define IMU_IRQ_IRQ					PIOA_IRQn
-
 #define IMU_IRQ_TYPE				PIO_INPUT
 #define IMU_IRQ_ATTR				(PIO_IT_RISE_EDGE | PIO_DEFAULT)
 #define IMU_IRQ_FLAGS				(IMU_IRQ_TYPE | IMU_IRQ_ATTR)
@@ -278,11 +280,18 @@ extern void imu_process_interrupt(uint32_t id, uint32_t mask);
 #define PINS_TWI0_MASK 		(PIO_PA4A_TWCK0 | PIO_PA3A_TWD0)
 #define PINS_TWI0_ATTR		PIO_DEFAULT
 
+//#define IMU_WAKEUP_PIO				PIOA
+//#define IMU_WAKEUP_PIO_IDX			PIO_PA2_IDX
+//#define IMU_WAKEUP_MASK				PIO_PA2
+//#define IMU_WAKEUP_TYPE				PIO_OUTPUT_0
+//#define IMU_WAKEUP_ATTR				(PIO_DEFAULT)
+
 #define IMU_WAKEUP_PIO				PIOA
+#define IMU_WAKEUP_PIO_ID			ID_PIOA
 #define IMU_WAKEUP_PIO_IDX			PIO_PA2_IDX
 #define IMU_WAKEUP_MASK				PIO_PA2
-#define IMU_WAKEUP_TYPE				PIO_OUTPUT_0
-#define IMU_WAKEUP_ATTR				(PIO_DEFAULT)
+#define IMU_WAKEUP_TYPE				PIO_INPUT
+#define IMU_WAKEUP_ATTR				(PIO_IT_RISE_EDGE | PIO_DEFAULT)
 
 
 

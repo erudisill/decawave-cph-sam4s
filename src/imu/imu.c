@@ -13,10 +13,53 @@
 #include "imu_api.h"
 #include "imu.h"
 
+/* Low-power accel wakeup rates. */
+enum lp_accel_rate_e {
+    INV_LPA_1_25HZ,
+    INV_LPA_5HZ,
+    INV_LPA_20HZ,
+    INV_LPA_40HZ
+};
+
+/* Filter configurations. */
+enum lpf_e {
+    INV_FILTER_256HZ_NOLPF2 = 0,
+    INV_FILTER_188HZ,
+    INV_FILTER_98HZ,
+    INV_FILTER_42HZ,
+    INV_FILTER_20HZ,
+    INV_FILTER_10HZ,
+    INV_FILTER_5HZ,
+    INV_FILTER_2100HZ_NOLPF,
+    NUM_FILTER
+};
+
+
+
 volatile bool wake_event_received = false;
+static uint32_t rtt_alarm_wait_ms;
 
 static void irq_init(void);
 static void irq_handler(uint32_t id, uint32_t mask);
+static void imu_prepare_sleep(void);
+void log_imu_settings(void);
+void log_imu_registers(void);
+
+static void imu_handler(uint32_t ul_id, uint32_t ul_mask);
+void imu_enable_interrupts(void);
+static volatile uint32_t g_ul_imu_interrupt = 1;
+
+static void imu_handler(uint32_t ul_id, uint32_t ul_mask)
+{
+	if (IMU_IRQ_PIO_ID == ul_id && IMU_WAKEUP_MASK == ul_mask) {
+		g_ul_imu_interrupt = 1;
+	}
+}
+
+static void irq_handler(uint32_t id, uint32_t mask)
+{
+	wake_event_received = true;
+}
 
 void PMC_Handler(void)
 {
@@ -37,25 +80,19 @@ void RTT_handler(void)
 	}
 }
 
-static void irq_init(void) {
 
-	pio_configure_pin(IMU_IRQ_IDX, IMU_IRQ_FLAGS);
-	pio_pull_down(IMU_IRQ_PIO, IMU_IRQ_MASK, true);
-	pio_handler_set(IMU_IRQ_PIO, IMU_IRQ_PIO_ID, IMU_IRQ_MASK, IMU_IRQ_ATTR, irq_handler);
-	pio_enable_interrupt(IMU_IRQ_PIO, IMU_IRQ_MASK);
-
-	pio_handler_set_priority(IMU_IRQ_PIO, IMU_IRQ_IRQ, 0);
-	pmc_enable_periph_clk(IMU_IRQ_PIO_ID);
-}
-
-static void irq_handler(uint32_t id, uint32_t mask)
+static void irq_init(void)
 {
-	wake_event_received = true;
+
+
+
 }
+
 
 void imu_init(void)
 {
 	pmc_enable_periph_clk(IMU_TWI_ID);
+
 	i2c_init(IMU_TWI);
 	i2c_begin();
 
@@ -64,14 +101,25 @@ void imu_init(void)
 	imu_reset();
 	cph_millis_delay(10);
 
-//	imu_set_int_enabled(IMU_INTERRUPT_ENABLE);
-
 	memset(imu_buffer, 0, sizeof(imu_buffer));
+}
+
+void imu_lp_accel_mode(uint8_t rate)
+{
+	imu_wom_set_int_latched(1);
+	cph_millis_delay(10);
 }
 
 void imu_init_wom(void)
 {
 	imu_reset();
+	cph_millis_delay(10);
+
+
+	imu_set_int_enabled(0); // todo: new code
+	cph_millis_delay(10);
+
+	imu_wom_set_int_latched(1); // todo: new code
 	cph_millis_delay(10);
 
 	imu_wom_set_pwr_mgmt_1();
@@ -86,39 +134,19 @@ void imu_init_wom(void)
 	imu_wom_enable_motion_interrupt();
 	cph_millis_delay(10);
 
+//	imu_wom_enable_raw_dataready_interrupt();
+//	cph_millis_delay(10);
+
 	imu_wom_enable_accel_hardware_intel();
 	cph_millis_delay(10);
 
 	imu_set_motion_detection_threshold(2);
 	cph_millis_delay(10);
 
-	imu_wom_set_wakeup_frequency(3);
+	imu_wom_set_wakeup_frequency();
 	cph_millis_delay(10);
 
 	imu_wom_enable_cycle_mode();
-}
-
-void imu_init_lowpower_motion_detection(void)
-{
-	imu_set_power_on_delay(3);
-	cph_millis_delay(10);
-
-	imu_set_int_zero_motion_enabled(false);
-	cph_millis_delay(10);
-
-	imu_set_dhpf_mode(MPU6050_DHPF_5);
-	cph_millis_delay(10);
-
-	imu_set_motion_detection_threshold(2);
-	cph_millis_delay(10);
-
-	imu_set_zero_motion_detection_threshold(2); // 2, 156
-	cph_millis_delay(10);
-
-	imu_set_motion_detection_duration(40); // 40, 80
-	cph_millis_delay(10);
-
-	imu_set_zero_motion_detection_duration(1); // 0, 2
 	cph_millis_delay(10);
 }
 
@@ -141,16 +169,31 @@ void imu_init_gimbal(void)
 }
 
 
-void imu_run_console(void)
+static void imu_sleep(void)
 {
+
+	TRACE("\r\n\r\nGoing to sleep...\r\n");
+
+
 	uint32_t ul_previous_time;
 
-	rtt_sel_source(RTT, false);
-	rtt_init(RTT, 32);
-//	rtt_init(RTT, 32768);
+	pio_configure(PIOA, PIO_INPUT, PIO_PA2, 0);
+	PIOA->PIO_PPDER |= PIO_PA2;
 
-	ul_previous_time = rtt_read_timer_value(RTT);
-	while (ul_previous_time == rtt_read_timer_value(RTT));
+	rtt_sel_source(RTT, false);
+	rtt_init(RTT, 32); // 32768
+
+#define WAKEUP_BACKUP
+//#define WAKEUP_WAIT
+
+
+#ifdef WAKEUP_BACKUP
+	supc_set_wakeup_mode(SUPC, SUPC_WUMR_RTTEN_ENABLE);
+	supc_set_wakeup_inputs(SUPC, SUPC_WUIR_WKUPEN2_ENABLE, SUPC_WUIR_WKUPT2_HIGH);
+#endif
+#ifdef WAKEUP_WAIT
+	pmc_set_fast_startup_input(PMC_FSMR_RTTAL | PMC_FSMR_FSTT0);
+#endif
 
 	NVIC_DisableIRQ(RTT_IRQn);
 	NVIC_ClearPendingIRQ(RTT_IRQn);
@@ -158,14 +201,40 @@ void imu_run_console(void)
 	NVIC_EnableIRQ(RTT_IRQn);
 	rtt_enable_interrupt(RTT, RTT_MR_ALMIEN);
 
-	NVIC_EnableIRQ(PMC_IRQn);
-	pmc_set_fast_startup_input(PMC_FSMR_RTTAL | PMC_FSMR_FSTT2);
+
+	volatile uint32_t rttv = rtt_read_timer_value(RTT);
+	volatile uint32_t wait_value = rttv + IMU_RTT_ALARM_MS;
+
+	cph_millis_delay(1);
+
+	rtt_write_alarm_time(RTT, wait_value);
+
+	imu_wom_enable_cycle_mode();
+
+	cpu_irq_disable();
 
 
 
-	volatile uint32_t wait_ms = 5000;
+#ifdef WAKEUP_WAIT
+	pmc_sleep(SAM_PM_SMODE_WAIT);
+#endif
+#ifdef WAKEUP_BACKUP
+	pmc_sleep(SAM_PM_SMODE_BACKUP);
+#endif
+
+	cpu_irq_enable();
+
+	cph_millis_delay(1);
+
+	TRACE("Awake!\r\n");
+
+}
+
+void imu_run_console(void)
+{
 
 	pio_set_pin_high(LED_STATUS0_IDX);
+
 	while(true) {
 
 		uint8_t c = 0x00;
@@ -175,115 +244,21 @@ void imu_run_console(void)
 		}
 
 		if (c == '?') {
-//			TRACE("wake on motion settings:\r\n");
-//
-//			TRACE("imu_get_wake_cycle_enabled: %d\r\n", get_wake_cycle_enabled());
-//			TRACE("imu_get_sleep_enabled: %d\r\n", get_sleep_enabled());
-//			TRACE("imu_get_standby_enabled: %d\r\n", get_standby_enabled());
-//			TRACE("imu_get_standby_x_accel_enabled: %d\r\n", get_standby_x_accel_enabled());
-//			TRACE("imu_get_standby_y_accel_enabled: %d\r\n", get_standby_y_accel_enabled());
-//			TRACE("imu_get_standby_z_accel_enabled: %d\r\n", get_standby_z_accel_enabled());
-//			TRACE("imu_get_standby_x_gyro_enabled: %d\r\n", get_standby_x_gyro_enabled());
-//			TRACE("imu_get_standby_y_gyro_enabled: %d\r\n", get_standby_y_gyro_enabled());
-//			TRACE("imu_get_standby_z_gyro_enabled: %d\r\n", get_standby_z_gyro_enabled());
-//			imu_get_accel_config2();
-//			TRACE("imu_get_motion_interrupt_enabled: 0x%02x\r\n", get_motion_interrupt_enabled());
-//			TRACE("get_accel_intel_enabled: %d\r\n", get_accel_intel_enabled());
-//			TRACE("get_accel_intel_mode: %d\r\n", get_accel_intel_mode());
-//			TRACE("get_motion_threshold: %d\r\n", get_motion_threshold());
-//			TRACE("imu_get_wake_frequency: 0x%02x\r\n", get_wake_frequency());
+			log_imu_settings();
 
+		} else if (c == '*') {
+			log_imu_registers();
 
-//			TRACE("0x1A CONFIG: %02x\r\n", imu_get_reg(MPU9150_RA_CONFIG));
-//			TRACE("0x1B GYRO_CONFIG: %02x\r\n", imu_get_reg(MPU9150_RA_GYRO_CONFIG));
-//			TRACE("0x1C ACCEL_CONFIG: %02x\r\n", imu_get_reg(MPU9150_RA_ACCEL_CONFIG));
-//			TRACE("0x1D ACCEL_CONFIG 2: %02x\r\n", imu_get_reg(MPU9150_RA_FF_THR));
-//			TRACE("0x1E LP_ACCEL_ODR: %02x\r\n", imu_get_reg(MPU9150_RA_FF_DUR));
-//			TRACE("0x1F WOM THR: %02x\r\n", imu_get_reg(MPU9150_RA_MOT_THR));
-//			TRACE("0x38 INT_ENABLE: %02x\r\n", imu_get_int_enabled());
-//			cph_millis_delay(10);
-//			TRACE("0x3A INT_STATUS: %02x\r\n", imu_get_reg(MPU9150_RA_INT_STATUS));
-//			TRACE("0x69 MOT_DETECT_CTRL: %02x\r\n", imu_get_reg(MPU9150_RA_MOT_DETECT_CTRL));
-//			TRACE("0x6B PWR_MGMT_1: %02x\r\n", imu_get_reg(MPU9150_RA_PWR_MGMT_1));
-//			TRACE("0x6C PWR_MGMT_2: %02x\r\n", imu_get_reg(MPU9150_RA_PWR_MGMT_2));
-
-
-			TRACE("0x6B PWR_MGMT_1 CYCLE_BIT: %02x\r\n", imu_get_reg_bit(MPU9150_RA_PWR_MGMT_1, MPU9150_PWR1_CYCLE_BIT));
-			cph_millis_delay(10);
-			TRACE("0x6B PWR_MGMT_1 SLEEP_BIT: %02x\r\n", imu_get_reg_bit(MPU9150_RA_PWR_MGMT_1, MPU9150_PWR1_SLEEP_BIT));
-			cph_millis_delay(10);
-			TRACE("0x6B PWR_MGMT_1 STANDBY_BIT: %02x\r\n", imu_get_reg_bit(MPU9150_RA_PWR_MGMT_1, MPU9150_PWR1_STANDBY_BIT));
-			cph_millis_delay(10);
-			TRACE("0x6B PWR_MGMT_1 CLKSEL[0]: %02x\r\n", imu_get_reg_bit(MPU9150_RA_PWR_MGMT_1, 0));
-			cph_millis_delay(10);
-			TRACE("0x6B PWR_MGMT_1 CLKSEL[1]: %02x\r\n", imu_get_reg_bit(MPU9150_RA_PWR_MGMT_1, 1));
-			cph_millis_delay(10);
-			TRACE("0x6B PWR_MGMT_1 CLKSEL[2]: %02x\r\n", imu_get_reg_bit(MPU9150_RA_PWR_MGMT_1, 2));
-			cph_millis_delay(10);
-			TRACE("0x6C PWR_MGMT_2 bit[0]: %02x\r\n", imu_get_reg_bit(MPU9150_RA_PWR_MGMT_2, 0));
-			cph_millis_delay(10);
-			TRACE("0x6C PWR_MGMT_2 bit[1]: %02x\r\n", imu_get_reg_bit(MPU9150_RA_PWR_MGMT_2, 0));
-			cph_millis_delay(10);
-			TRACE("0x6C PWR_MGMT_2 bit[2]: %02x\r\n", imu_get_reg_bit(MPU9150_RA_PWR_MGMT_2, 0));
-			cph_millis_delay(10);
-			TRACE("0x6C PWR_MGMT_2 bit[3]: %02x\r\n", imu_get_reg_bit(MPU9150_RA_PWR_MGMT_2, 0));
-			cph_millis_delay(10);
-			TRACE("0x6C PWR_MGMT_2 bit[4]: %02x\r\n", imu_get_reg_bit(MPU9150_RA_PWR_MGMT_2, 0));
-			cph_millis_delay(10);
-			TRACE("0x6C PWR_MGMT_2 bit[5]: %02x\r\n", imu_get_reg_bit(MPU9150_RA_PWR_MGMT_2, 0));
-			cph_millis_delay(10);
-
-			TRACE("0x1D ACCEL_CONFIG 2 A_DLPF_CFG[0]: %02x\r\n", imu_get_reg_bit(MPU9150_RA_FF_THR, MPU9150_DLPF_A_DLPFCFG_BIT));
-			cph_millis_delay(10);
-			TRACE("0x1D ACCEL_CONFIG 2 A_DLPF_CFG[1]: %02x\r\n", imu_get_reg_bit(MPU9150_RA_FF_THR, (MPU9150_DLPF_A_DLPFCFG_BIT+1)));
-			cph_millis_delay(10);
-			TRACE("0x1D ACCEL_CONFIG 2 A_DLPF_CFG[2]: %02x\r\n", imu_get_reg_bit(MPU9150_RA_FF_THR, (MPU9150_DLPF_A_DLPFCFG_BIT+2)));
-			cph_millis_delay(10);
-			TRACE("0x1D ACCEL_CONFIG 2 DLPF_FCHOICE_B_BIT: %02x\r\n", imu_get_reg_bit(MPU9150_RA_FF_THR, MPU9150_DLPF_FCHOICE_B_BIT));
-			cph_millis_delay(10);
-			TRACE("0x38 INT_ENABLE MPU9150_WOM_EN_BIT: %02x\r\n", imu_get_reg_bit(MPU9150_RA_INT_ENABLE, MPU9150_WOM_EN_BIT));
-			cph_millis_delay(10);
-			TRACE("0x69 INT_ENABLE MPU9150_ACCEL_INTEL_EN: %02x\r\n", imu_get_reg_bit(MPU9150_RA_MOT_DETECT_CTRL, MPU9150_ACCEL_INTEL_EN));
-			cph_millis_delay(10);
-			TRACE("0x69 INT_ENABLE MPU9150_ACCEL_INTEL_MODE: %02x\r\n", imu_get_reg_bit(MPU9150_RA_MOT_DETECT_CTRL, MPU9150_ACCEL_INTEL_MODE));
-			cph_millis_delay(10);
-
-
-
-
-			TRACE("\r\n");
 		} else if (c == 's') {
 
-
-//			static volatile uint32_t wait_ms = 5;
-
-			TRACE("\r\nSLEEP Zzzzzzz.....\r\n");
-			cph_millis_delay(500);
-
-			volatile uint32_t rttv = rtt_read_timer_value(RTT);
-			volatile uint32_t wait_value = rttv + wait_ms;
-
-			cph_millis_delay(1);
-
-			rtt_write_alarm_time(RTT, wait_value);
-
-//			imu_wom_enable_cycle_mode();
-			imu_set_sleep_enabled(true);
-
-			cpu_irq_disable();
-			pmc_sleep(SAM_PM_SMODE_WAIT);
-			cpu_irq_enable();
-
-			g_cph_millis += wait_ms;
-
-			TRACE("DONE SLEEPING\r\n");
+			imu_wom_enable_cycle_mode();
+			cph_millis_delay(100);
+			imu_sleep();
 
 		} else if (c == 'c') {
 			TRACE("configuring mpu9250...\r\n");
-//			imu_init_lowpower_motion_detection();
-			TRACE("configuration complete!\r\n");
 			imu_init_wom();
-//			imu_init_gimbal();
+			TRACE("configuration complete!\r\n");
 		}
 
 		pio_toggle_pin(LED_STATUS0_IDX);
@@ -296,7 +271,138 @@ void imu_run_console(void)
 		cph_millis_delay(125);
 	}
 	pio_set_pin_high(LED_STATUS0_IDX);
-	// *
-	// *
-	// *** end test imu ***
+
+}
+
+
+void log_imu_settings(void)
+{
+	TRACE("0x6B PWR_MGMT_1 reg: %02x\r\n", imu_get_reg(MPU9150_RA_PWR_MGMT_1));
+	cph_millis_delay(10);
+
+
+	TRACE("0x6B PWR_MGMT_1 CYCLE_BIT: %02x\r\n", imu_get_reg_bit(MPU9150_RA_PWR_MGMT_1, MPU9150_PWR1_CYCLE_BIT));
+	cph_millis_delay(10);
+	TRACE("0x6B PWR_MGMT_1 SLEEP_BIT: %02x\r\n", imu_get_reg_bit(MPU9150_RA_PWR_MGMT_1, MPU9150_PWR1_SLEEP_BIT));
+	cph_millis_delay(10);
+	TRACE("0x6B PWR_MGMT_1 STANDBY_BIT: %02x\r\n", imu_get_reg_bit(MPU9150_RA_PWR_MGMT_1, MPU9150_PWR1_STANDBY_BIT));
+	cph_millis_delay(10);
+	TRACE("0x6B PWR_MGMT_1 CLKSEL[0]: %02x\r\n", imu_get_reg_bit(MPU9150_RA_PWR_MGMT_1, 0));
+	cph_millis_delay(10);
+	TRACE("0x6B PWR_MGMT_1 CLKSEL[1]: %02x\r\n", imu_get_reg_bit(MPU9150_RA_PWR_MGMT_1, 1));
+	cph_millis_delay(10);
+	TRACE("0x6B PWR_MGMT_1 CLKSEL[2]: %02x\r\n", imu_get_reg_bit(MPU9150_RA_PWR_MGMT_1, 2));
+	cph_millis_delay(10);
+	TRACE("0x6C PWR_MGMT_2 bit[0]: %02x\r\n", imu_get_reg_bit(MPU9150_RA_PWR_MGMT_2, 0));
+	cph_millis_delay(10);
+	TRACE("0x6C PWR_MGMT_2 bit[1]: %02x\r\n", imu_get_reg_bit(MPU9150_RA_PWR_MGMT_2, 0));
+	cph_millis_delay(10);
+	TRACE("0x6C PWR_MGMT_2 bit[2]: %02x\r\n", imu_get_reg_bit(MPU9150_RA_PWR_MGMT_2, 0));
+	cph_millis_delay(10);
+	TRACE("0x6C PWR_MGMT_2 bit[3]: %02x\r\n", imu_get_reg_bit(MPU9150_RA_PWR_MGMT_2, 0));
+	cph_millis_delay(10);
+	TRACE("0x6C PWR_MGMT_2 bit[4]: %02x\r\n", imu_get_reg_bit(MPU9150_RA_PWR_MGMT_2, 0));
+	cph_millis_delay(10);
+	TRACE("0x6C PWR_MGMT_2 bit[5]: %02x\r\n", imu_get_reg_bit(MPU9150_RA_PWR_MGMT_2, 0));
+	cph_millis_delay(10);
+
+	TRACE("0x1D ACCEL_CONFIG 2 A_DLPF_CFG[0]: %02x\r\n", imu_get_reg_bit(MPU9150_RA_FF_THR, MPU9150_DLPF_A_DLPFCFG_BIT));
+	cph_millis_delay(10);
+	TRACE("0x1D ACCEL_CONFIG 2 A_DLPF_CFG[1]: %02x\r\n", imu_get_reg_bit(MPU9150_RA_FF_THR, (MPU9150_DLPF_A_DLPFCFG_BIT+1)));
+	cph_millis_delay(10);
+	TRACE("0x1D ACCEL_CONFIG 2 A_DLPF_CFG[2]: %02x\r\n", imu_get_reg_bit(MPU9150_RA_FF_THR, (MPU9150_DLPF_A_DLPFCFG_BIT+2)));
+	cph_millis_delay(10);
+	TRACE("0x1D ACCEL_CONFIG 2 DLPF_FCHOICE_B_BIT: %02x\r\n", imu_get_reg_bit(MPU9150_RA_FF_THR, MPU9150_DLPF_FCHOICE_B_BIT));
+	cph_millis_delay(10);
+	TRACE("0x69 MOT_DETECT_CTRL ACCEL_INTEL_EN: %02x\r\n", imu_get_reg_bit(MPU9150_RA_MOT_DETECT_CTRL, MPU9150_ACCEL_INTEL_EN));
+	cph_millis_delay(10);
+	TRACE("0x69 MOT_DETECT_CTRL ACCEL_INTEL_MODE: %02x\r\n", imu_get_reg_bit(MPU9150_RA_MOT_DETECT_CTRL, MPU9150_ACCEL_INTEL_MODE));
+	cph_millis_delay(10);
+
+	TRACE("0x1F WOM_THR bit[0]: %02x\r\n", imu_get_reg_bit(MPU9150_RA_MOT_THR, 0));
+	cph_millis_delay(10);
+	TRACE("0x1F WOM_THR bit[1]: %02x\r\n", imu_get_reg_bit(MPU9150_RA_MOT_THR, 1));
+	cph_millis_delay(10);
+	TRACE("0x1F WOM_THR bit[2]: %02x\r\n", imu_get_reg_bit(MPU9150_RA_MOT_THR, 2));
+	cph_millis_delay(10);
+	TRACE("0x1F WOM_THR bit[3]: %02x\r\n", imu_get_reg_bit(MPU9150_RA_MOT_THR, 3));
+	cph_millis_delay(10);
+	TRACE("0x1F WOM_THR bit[4]: %02x\r\n", imu_get_reg_bit(MPU9150_RA_MOT_THR, 4));
+	cph_millis_delay(10);
+	TRACE("0x1F WOM_THR bit[5]: %02x\r\n", imu_get_reg_bit(MPU9150_RA_MOT_THR, 5));
+	cph_millis_delay(10);
+	TRACE("0x1F WOM_THR bit[6]: %02x\r\n", imu_get_reg_bit(MPU9150_RA_MOT_THR, 6));
+	cph_millis_delay(10);
+	TRACE("0x1F WOM_THR bit[7]: %02x\r\n", imu_get_reg_bit(MPU6050_RA_MOT_THR, 7));
+	cph_millis_delay(10);
+
+	TRACE("0x1E LP_ACCEL_ODR lposc_clkselbit[0]: %02x\r\n", imu_get_reg_bit(MPU9150_RA_FF_DUR, 0));
+	cph_millis_delay(10);
+	TRACE("0x1E LP_ACCEL_ODR lposc_clkselbit[1]: %02x\r\n", imu_get_reg_bit(MPU9150_RA_FF_DUR, 1));
+	cph_millis_delay(10);
+	TRACE("0x1E LP_ACCEL_ODR lposc_clkselbit[2]: %02x\r\n", imu_get_reg_bit(MPU9150_RA_FF_DUR, 2));
+	cph_millis_delay(10);
+	TRACE("0x1E LP_ACCEL_ODR lposc_clkselbit[3]: %02x\r\n", imu_get_reg_bit(MPU9150_RA_FF_DUR, 3));
+	cph_millis_delay(10);
+
+	TRACE("0x37 ACTL bit[0]: %02x\r\n", imu_get_reg_bit(MPU9150_RA_INT_PIN_CFG, 0));
+	cph_millis_delay(10);
+	TRACE("0x37 ACTL bit[1]: %02x\r\n", imu_get_reg_bit(MPU9150_RA_INT_PIN_CFG, 1));
+	cph_millis_delay(10);
+	TRACE("0x37 ACTL bit[2]: %02x\r\n", imu_get_reg_bit(MPU9150_RA_INT_PIN_CFG, 2));
+	cph_millis_delay(10);
+	TRACE("0x37 ACTL bit[3]: %02x\r\n", imu_get_reg_bit(MPU9150_RA_INT_PIN_CFG, 3));
+	cph_millis_delay(10);
+	TRACE("0x37 ACTL bit[4]: %02x\r\n", imu_get_reg_bit(MPU9150_RA_INT_PIN_CFG, 4));
+	cph_millis_delay(10);
+	TRACE("0x37 ACTL bit[5]: %02x\r\n", imu_get_reg_bit(MPU9150_RA_INT_PIN_CFG, 5));
+	cph_millis_delay(10);
+	TRACE("0x37 ACTL bit[6]: %02x\r\n", imu_get_reg_bit(MPU9150_RA_INT_PIN_CFG, 6));
+	cph_millis_delay(10);
+	TRACE("0x37 ACTL bit[7]: %02x\r\n", imu_get_reg_bit(MPU9150_RA_INT_PIN_CFG, 7));
+	cph_millis_delay(10);
+
+	TRACE("0x38 INT_ENABLE WOM_EN_BIT: %02x\r\n", imu_get_reg_bit(MPU9150_RA_INT_ENABLE, MPU9150_WOM_EN_BIT));
+	cph_millis_delay(10);
+
+	TRACE("0x38 INT_ENABLE RAW_RDY_EN: %02x\r\n", imu_get_reg_bit(MPU9150_RA_INT_ENABLE, MPU9150_RAW_RDY_EN_BIT));
+	cph_millis_delay(10);
+
+	TRACE("\r\n");
+}
+
+void log_imu_registers(void)
+{
+	for (int i=0; i<=58; i++) {
+
+		uint8_t reg = imu_get_reg(i);
+
+		TRACE("addr: %02x bit[0]: %02x\r\n", i, (reg & (1 << 0)) ? 1 : 0);
+		TRACE("addr: %02x bit[1]: %02x\r\n", i, (reg & (1 << 1)) ? 1 : 0);
+		TRACE("addr: %02x bit[2]: %02x\r\n", i, (reg & (1 << 2)) ? 1 : 0);
+		TRACE("addr: %02x bit[3]: %02x\r\n", i, (reg & (1 << 3)) ? 1 : 0);
+		TRACE("addr: %02x bit[4]: %02x\r\n", i, (reg & (1 << 4)) ? 1 : 0);
+		TRACE("addr: %02x bit[5]: %02x\r\n", i, (reg & (1 << 5)) ? 1 : 0);
+		TRACE("addr: %02x bit[6]: %02x\r\n", i, (reg & (1 << 6)) ? 1 : 0);
+		TRACE("addr: %02x bit[7]: %02x\r\n", i, (reg & (1 << 7)) ? 1 : 0);
+		cph_millis_delay(10);
+	}
+
+	TRACE("\r\n\r\n");
+
+	for (int i=105; i<=126; i++) {
+		uint8_t reg = imu_get_reg(i);
+
+		TRACE("addr: %02x bit[0]: %02x\r\n", i, (reg & (1 << 0)) ? 1 : 0);
+		TRACE("addr: %02x bit[1]: %02x\r\n", i, (reg & (1 << 1)) ? 1 : 0);
+		TRACE("addr: %02x bit[2]: %02x\r\n", i, (reg & (1 << 2)) ? 1 : 0);
+		TRACE("addr: %02x bit[3]: %02x\r\n", i, (reg & (1 << 3)) ? 1 : 0);
+		TRACE("addr: %02x bit[4]: %02x\r\n", i, (reg & (1 << 4)) ? 1 : 0);
+		TRACE("addr: %02x bit[5]: %02x\r\n", i, (reg & (1 << 5)) ? 1 : 0);
+		TRACE("addr: %02x bit[6]: %02x\r\n", i, (reg & (1 << 6)) ? 1 : 0);
+		TRACE("addr: %02x bit[7]: %02x\r\n", i, (reg & (1 << 7)) ? 1 : 0);
+		cph_millis_delay(10);
+	}
+
+
 }

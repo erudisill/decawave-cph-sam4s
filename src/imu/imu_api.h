@@ -56,12 +56,14 @@ void imu_wom_set_pwr_mgmt_1(void);
 void imu_wom_set_pwr_mgmt_2(void);
 void imu_wom_set_accel_lpf(void);
 void imu_wom_enable_motion_interrupt(void);
+void imu_wom_enable_raw_dataready_interrupt(void);
 void imu_wom_enable_accel_hardware_intel(void);
-void imu_wom_set_wakeup_frequency(uint8_t frequency);
+void imu_wom_set_wakeup_frequency();
 void imu_wom_enable_cycle_mode();
+void imu_wom_set_int_latched(uint8_t latched);
 
 uint8_t imu_get_dlpf_mode();
-void imu_set_dlpf_mode(uint8_t mode);
+void imu_set_lpf(uint8_t mode);
 void imu_set_rate(uint8_t rate);
 void imu_set_int_enabled(uint8_t enabled);
 uint8_t imu_get_int_dataready_status(void);

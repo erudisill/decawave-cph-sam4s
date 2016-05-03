@@ -70,9 +70,9 @@ uint8_t imu_get_reg(uint8_t reg)
 {
 	memset(imu_buffer, 0, sizeof(imu_buffer));
 
-//	readBytes(imu_address, reg, 8, imu_buffer, I2CDEV_DEFAULT_READ_TIMEOUT);
+	readBytes(imu_address, reg, 1, imu_buffer, I2CDEV_DEFAULT_READ_TIMEOUT);
 
-	readBits(imu_address, reg, 0, 8, imu_buffer, I2CDEV_DEFAULT_READ_TIMEOUT);
+//	readBits(imu_address, reg, 0, 8, imu_buffer, I2CDEV_DEFAULT_READ_TIMEOUT);
 	cph_millis_delay(10);
 	return imu_buffer[0];
 
@@ -301,7 +301,7 @@ uint8_t imu_get_accel_config2(void)
 //	return imu_buffer[0];
 }
 
-void imu_set_dlpf_mode(uint8_t mode)
+void imu_set_lpf(uint8_t mode)
 {
 	volatile bool status = false;
 
@@ -423,13 +423,19 @@ void imu_wom_set_pwr_mgmt_1(void)
 {
 	volatile bool status = false;
 
+	status = writeBit(imu_address, MPU9150_RA_PWR_MGMT_1, MPU9150_PWR1_CLKSEL_BIT, 1);
+	cph_millis_delay(10);
+
+	status = writeBit(imu_address, MPU9150_RA_PWR_MGMT_1, MPU9150_PWR1_STANDBY_BIT, 0);
+	cph_millis_delay(10);
+
 	status = writeBit(imu_address, MPU9150_RA_PWR_MGMT_1, MPU9150_PWR1_CYCLE_BIT, 0);
 	cph_millis_delay(10);
 
 	status = writeBit(imu_address, MPU9150_RA_PWR_MGMT_1, MPU9150_PWR1_SLEEP_BIT, 0);
 	cph_millis_delay(10);
 
-	status = writeBit(imu_address, MPU9150_RA_PWR_MGMT_1, MPU9150_PWR1_STANDBY_BIT, 0);
+
 }
 
 void imu_wom_set_pwr_mgmt_2(void)
@@ -454,31 +460,15 @@ void imu_wom_set_pwr_mgmt_2(void)
 	status = writeBit(imu_address, MPU9150_RA_PWR_MGMT_2, MPU9150_PWR2_STBY_ZG_BIT, 1);
 }
 
-
-
-//void imu_wom_set_accel_lpf(void)
-//{
-//	// pg. 7, 15 mpu-9250-register-map.pdf
-//
-//	// Set Accel LPF setting to 184 Hz Bandwidth
-//	volatile bool status = false;
-//
-//	uint8_t accel_fchoice_b = (1 << 3);
-//	uint8_t a_dlpfcfg = (1 << 0);
-//
-//	status = writeBits(imu_address, MPU9150_RA_FF_THR, 3, 4, (accel_fchoice_b | a_dlpfcfg) );
-//
-//}
-
 void imu_wom_set_accel_lpf(void)
 {
 
 	volatile bool status = false;
 
-	status = writeBit(imu_address, MPU9150_RA_FF_THR, MPU9150_DLPF_FCHOICE_B_BIT, 1);
+	status = writeBit(imu_address, MPU9150_RA_FF_THR, 3, 1);
 	cph_millis_delay(10);
 
-	status = writeBit(imu_address, MPU9150_RA_FF_THR, MPU9150_DLPF_A_DLPFCFG_BIT, 1);
+	status = writeBit(imu_address, MPU9150_RA_FF_THR, 0, 1);
 	cph_millis_delay(10);
 
 
@@ -489,7 +479,26 @@ void imu_wom_enable_motion_interrupt(void)
 	volatile bool status = false;
 
 	status = writeBit(imu_address, MPU9150_RA_INT_ENABLE, MPU9150_WOM_EN_BIT, 1);
+
+	if(status == true)
+		printf("imu_wom_enable_motion_interrupt: success\r\n");
+	else
+		printf("imu_wom_enable_motion_interrupt: failed\r\n");
 }
+
+void imu_wom_enable_raw_dataready_interrupt(void)
+{
+	volatile bool status = false;
+
+	status = writeBit(imu_address, MPU9150_RA_INT_ENABLE, MPU9150_RAW_RDY_EN_BIT, 1);
+
+	if(status == true)
+		printf("imu_wom_enable_raw_dataready_interrupt: success\r\n");
+	else
+		printf("imu_wom_enable_raw_dataready_interrupt: failed\r\n");
+}
+
+
 
 
 void imu_wom_enable_accel_hardware_intel(void)
@@ -502,11 +511,20 @@ void imu_wom_enable_accel_hardware_intel(void)
 	status = writeBit(imu_address, MPU9150_RA_MOT_DETECT_CTRL, MPU9150_ACCEL_INTEL_MODE, 1);
 }
 
-void imu_wom_set_wakeup_frequency(uint8_t frequency)
+void imu_wom_set_wakeup_frequency()
 {
 	volatile bool status = false;
 
-	status = writeBits(imu_address, MPU6050_RA_PWR_MGMT_2, MPU6050_PWR2_LP_WAKE_CTRL_BIT, MPU6050_PWR2_LP_WAKE_CTRL_LENGTH, frequency);
+	// set to .98 Hz pg.16 of MPU-9250 Register Map
+	status = writeBit(imu_address, MPU9150_RA_FF_DUR, 0, 0);
+	cph_millis_delay(10);
+	status = writeBit(imu_address, MPU9150_RA_FF_DUR, 1, 1);
+	cph_millis_delay(10);
+	status = writeBit(imu_address, MPU9150_RA_FF_DUR, 2, 0);
+	cph_millis_delay(10);
+	status = writeBit(imu_address, MPU9150_RA_FF_DUR, 3, 1);
+	cph_millis_delay(10);
+
 }
 
 void imu_wom_enable_cycle_mode()
@@ -514,6 +532,23 @@ void imu_wom_enable_cycle_mode()
 	volatile bool status = false;
 
 	status = writeBit(imu_address, MPU9150_RA_PWR_MGMT_1, MPU9150_PWR1_CYCLE_BIT, 1);
+
+	if(status == true)
+		printf("imu_wom_enable_cycle_mode: success\r\n");
+	else
+		printf("imu_wom_enable_cycle_mode: failed\r\n");
+}
+
+void imu_wom_set_int_latched(uint8_t latched)
+{
+	volatile bool status = false;
+
+	status = writeBit(imu_address, MPU9150_RA_INT_PIN_CFG, MPU9150_INTCFG_LATCH_INT_EN_BIT, latched);
+
+	if(status == true)
+		printf("imu_wom_set_int_latched: success\r\n");
+	else
+		printf("imu_wom_set_int_latched: failed\r\n");
 }
 
 

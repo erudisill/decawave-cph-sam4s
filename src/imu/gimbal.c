@@ -56,7 +56,7 @@ void gimbal_init(void)
 	cph_millis_delay(10);
 	// set digitial lowpass filter
 //	imu_set_dlpf_mode(MPU6050_DLPF_BW_20);
-	imu_set_dlpf_mode(MPU6050_DLPF_BW_5);
+	imu_set_lpf(MPU6050_DLPF_BW_5);
 
 
 	cph_millis_delay(10);

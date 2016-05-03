@@ -132,7 +132,8 @@
 #define MPU9150_RA_FIFO_R_W         0x74
 #define MPU9150_RA_WHO_AM_I         0x75
 
-// WOM register bits
+// INT_ENABLE register bits
+#define MPU9150_RAW_RDY_EN_BIT     		0
 #define MPU9150_WOM_EN_BIT     			6
 
 // MOTION DETECTION CTRL register bits
@@ -348,7 +349,8 @@
 #define MPU9150_PWR1_CYCLE_BIT          5
 #define MPU9150_PWR1_STANDBY_BIT		4
 #define MPU9150_PWR1_TEMP_DIS_BIT       3
-#define MPU9150_PWR1_CLKSEL_BIT         2
+//#define MPU9150_PWR1_CLKSEL_BIT         2
+#define MPU9150_PWR1_CLKSEL_BIT         0
 #define MPU9150_PWR1_CLKSEL_LENGTH      3
 
 #define MPU9150_CLOCK_INTERNAL          0x00
