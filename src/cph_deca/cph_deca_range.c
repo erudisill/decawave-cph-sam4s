@@ -5,6 +5,7 @@
  *      Author: ericrudisill
  */
 
+#include <cph.h>
 #include <cph_deca_range.h>
 
 /* Frames used in the ranging process.  */

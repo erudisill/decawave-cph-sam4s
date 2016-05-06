@@ -45,8 +45,12 @@ void cs_sender_run(void);
 #define TX_ANT_DLY 16350
 #define RX_ANT_DLY TX_ANT_DLY
 #else
-#define TX_ANT_DLY 16565
-#define RX_ANT_DLY 16565
+//#define TX_ANT_DLY 16565
+//#define RX_ANT_DLY 16565
+#define TX_ANT_DLY 				cph_config->ant_dly_tx
+#define RX_ANT_DLY 				cph_config->ant_dly_rx
+#define TX_ANT_DLY_DEFAULT 		16463
+#define RX_ANT_DLY_DEFAULT 		TX_ANT_DLY_DEFAULT
 #endif
 
 
@@ -154,6 +158,8 @@ enum {
 #define FUNC_CS_TAG					0xD1
 #define FUNC_CS_COORD				0xD2
 
+#define FUNC_DWT_ANT_DLY			0xE1
+
 #define CPH_MAX_MSG_SIZE		128
 
 #define CPH_MAX_EVENTS			10
@@ -254,6 +260,13 @@ typedef struct PACKED {
 	uint16_t error_count;
 	uint16_t mac_cs;
 } cph_deca_msg_survey_response_t;
+
+typedef struct PACKED {
+	cph_deca_msg_header_t header;
+	uint16_t dly_tx;
+	uint16_t dly_rx;
+	uint16_t mac_cs;
+} cph_deca_msg_dwt_ant_dly_t;
 
 typedef struct PACKED {
 	uint16_t shortid;

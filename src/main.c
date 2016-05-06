@@ -53,6 +53,8 @@ static void init_config(void) {
 		cph_config->mode = CPH_MODE_SYNC_SENDER;
 #endif
 		memcpy(&cph_config->dwt_config, &g_dwt_configs[0], sizeof(dwt_config_t));
+		cph_config->ant_dly_tx = TX_ANT_DLY_DEFAULT;
+		cph_config->ant_dly_rx = RX_ANT_DLY_DEFAULT;
 		cph_config->sender_period = POLL_DELAY_MS;
 		cph_config_write();
 	}
@@ -66,13 +68,15 @@ void print_greeting() {
 	uint32_t f = sysclk_get_cpu_hz();
 	TRACE("CPU FREQ: %lu\r\n", f);
 
-	TRACE("HW:%2X.%02X  FW:%2X.%02X  PAN_ID:%04X  SHORT_ID:%04X\r\n",
+	TRACE("HW:%2X.%02X  FW:%2X.%02X  PAN_ID:%04X  SHORT_ID:%04X  DLY TX/RX:%d %d\r\n",
 			cph_config->hw_major,
 			cph_config->hw_minor,
 			cph_config->fw_major,
 			cph_config->fw_minor,
 			cph_config->panid,
-			cph_config->shortid);
+			cph_config->shortid,
+			cph_config->ant_dly_tx,
+			cph_config->ant_dly_rx);
 
 	if (cph_config->mode == CPH_MODE_ANCHOR) {
 		TRACE("Mode: ANCHOR\r\n");
@@ -107,6 +111,7 @@ void cph_board_init(void) {
 	cph_millis_init();
 
 	init_config();
+
 
 #if defined(IMU_ENABLE)
 	imu_init();

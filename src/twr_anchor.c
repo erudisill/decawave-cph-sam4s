@@ -90,6 +90,18 @@ MAC_FC,			// mac.ctl - data frame, frame pending, pan id comp, short dest, short
 		0x0000			// mac_cs
 		};
 
+static cph_deca_msg_dwt_ant_dly_t tx_dwt_ant_dly = {
+MAC_FC,			// mac.ctl - data frame, frame pending, pan id comp, short dest, short source
+		0,				// mac.seq
+		MAC_PAN_ID,		// mac.panid
+		MAC_TAG_ID,		// mac.dest
+		MAC_ANCHOR_ID,	// mac.source
+		FUNC_DWT_ANT_DLY,	// functionCode
+		0,				// tx dly
+		0,				// rx dly
+		0x0000			// mac_cs
+		};
+
 /* Buffer to store received messages.
  * Its size is adjusted to longest frame that this example code is supposed to handle. */
 static uint8 rx_buffer[CPH_MAX_MSG_SIZE];
@@ -426,6 +438,18 @@ static bool stdio_line_handler(void) {
 			cph_deca_load_frame(&tx_survey_request.header, sizeof(tx_survey_request));
 			cph_deca_send_immediate();
 		}
+	} else if (input_buf[0] == 'd') {
+		if (sscanf(&input_buf[2], "%x %d %d", &shortid_a, &x, &y) != 3) {
+			TRACE("BAD FORMAT\r\n");
+		} else {
+			// send message
+			dwt_forcetrxoff();
+			tx_dwt_ant_dly.header.dest = shortid_a;
+			tx_dwt_ant_dly.dly_tx = x;
+			tx_dwt_ant_dly.dly_rx = y;
+			cph_deca_load_frame(&tx_dwt_ant_dly.header, sizeof(tx_dwt_ant_dly));
+			cph_deca_send_immediate();
+		}
 	}
 	else {
 		result = false;
@@ -450,9 +474,14 @@ void twr_anchor_run(void) {
 	cph_deca_isr_init();
 	cph_deca_isr_disable();
 
+	TRACE("ant dly: %d %d\r\n", RX_ANT_DLY, TX_ANT_DLY);
+
+
 	// Setup DW1000
 	cph_deca_init_device();
 	cph_deca_init_network(cph_config->panid, cph_config->shortid);
+
+	TRACE("ant dly: %d %d\r\n", RX_ANT_DLY, TX_ANT_DLY);
 
 	// Init list of paired tags
 	memset(paired_tags, 0, sizeof(cph_deca_pair_info_t) * MAX_TAGS);
@@ -475,6 +504,9 @@ void twr_anchor_run(void) {
 
 	tx_survey_response.header.source = cph_config->shortid;
 	tx_survey_response.header.panid = cph_config->panid;
+
+	tx_dwt_ant_dly.header.source = cph_config->shortid;
+	tx_dwt_ant_dly.header.panid = cph_config->panid;
 
 
 #ifdef EXPERIMENTAL_STATE_MACHINE
@@ -698,6 +730,15 @@ void twr_anchor_run(void) {
 			} else if (rx_header->functionCode == FUNC_SURV_RESP) {
 				cph_deca_msg_survey_response_t * resp = ((cph_deca_msg_survey_response_t*) rx_buffer);
 				TRACE("* S %04X %04X %3.2f %d\r\n", resp->header.source, resp->range.shortid, resp->range.range, resp->error_count);
+
+			} else if (rx_header->functionCode == FUNC_DWT_ANT_DLY) {
+				cph_deca_msg_dwt_ant_dly_t * dly = ((cph_deca_msg_dwt_ant_dly_t*) rx_buffer);
+				TRACE("ANT DLY RX/TX: %d %d\r\n", dly->dly_rx, dly->dly_tx);
+				cph_config->ant_dly_rx = dly->dly_rx;
+				cph_config->ant_dly_tx = dly->dly_tx;
+				cph_config_write();
+				RSTC->RSTC_CR = RSTC_CR_KEY(0xA5) | RSTC_CR_PROCRST | RSTC_CR_PERRST;
+				TRACE("SET!\r\n");
 
 			} else {
 				TRACE("ERROR: unknown function code - data %02X: ", rx_header->functionCode);

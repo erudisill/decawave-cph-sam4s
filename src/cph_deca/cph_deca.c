@@ -6,6 +6,7 @@
  */
 
 #include <string.h>
+#include <cph.h>
 #include <cph_deca.h>
 #include <deca_regs.h>
 #include <cph_queue.h>
@@ -188,6 +189,8 @@ void cph_deca_force_wakeup() {
 void cph_deca_init_device() {
 	dwt_txconfig_t txconfig;
 
+	TRACE("ant dly: %d %d\r\n", RX_ANT_DLY, TX_ANT_DLY);
+
 	// Setup DECAWAVE
 	reset_DW1000();
 	spi_set_rate_low();
@@ -199,6 +202,8 @@ void cph_deca_init_device() {
 
 	dwt_setrxantennadelay(RX_ANT_DLY);
 	dwt_settxantennadelay(TX_ANT_DLY);
+
+	TRACE("ant dly: %d %d\r\n", RX_ANT_DLY, TX_ANT_DLY);
 
 	// Clear CLKPLL_LL
 	dwt_write32bitreg(SYS_STATUS_ID, 0x02000000);

@@ -9,7 +9,7 @@
 #define SRC_CPH_H_
 
 #define FW_MAJOR				0x01
-#define FW_MINOR				0x02
+#define FW_MINOR				0x03
 
 //#define ANCHOR
 //#define COORDINATOR
@@ -42,6 +42,8 @@ typedef struct PACKED {
 	uint16_t panid;
 	uint16_t shortid;
 	dwt_config_t dwt_config;
+	uint16_t ant_dly_tx;
+	uint16_t ant_dly_rx;
 	uint8_t mode;
 	uint32_t sender_period;
 	uint16_t sender_target;
