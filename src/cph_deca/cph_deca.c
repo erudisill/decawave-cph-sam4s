@@ -41,10 +41,17 @@ static uint64_t get_tx_timestamp_u64(void) {
 }
 
 uint32_t cph_deca_wait_for_tx_finished(int timeout_ms) {
+	uint8_t dummy_signal = 0x00;
+	return cph_deca_wait_for_tx_finished_signal(timeout_ms, &dummy_signal);
+}
+
+uint32_t cph_deca_wait_for_tx_finished_signal(int timeout_ms, volatile uint8_t * signal) {
 	uint32_t status_reg;
 	uint32_t start_ms = cph_get_millis();
 	uint32_t elapsed = 0;
 	while (cph_deca_isr_is_detected() == false) {
+		if (*signal == 0xFF)
+			return 0;
 		elapsed = cph_get_millis() - start_ms;
 		if (elapsed > timeout_ms)
 			return 0;
@@ -54,10 +61,17 @@ uint32_t cph_deca_wait_for_tx_finished(int timeout_ms) {
 }
 
 uint32_t cph_deca_wait_for_rx_finished(int timeout_ms) {
+	uint8_t dummy_signal = 0x00;
+	return cph_deca_wait_for_rx_finished_signal(timeout_ms, &dummy_signal);
+}
+
+uint32_t cph_deca_wait_for_rx_finished_signal(int timeout_ms, volatile uint8_t * signal) {
 	uint32_t status_reg;
 	uint32_t start_ms = cph_get_millis();
 	uint32_t elapsed = 0;
 	while (cph_deca_isr_is_detected() == false) {
+		if (*signal == 0xFF)
+			return 0;
 		elapsed = cph_get_millis() - start_ms;
 		if (elapsed > timeout_ms)
 			return 0;

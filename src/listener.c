@@ -106,7 +106,11 @@ void listener_run(void) {
 //	dwt_write32bitreg(SYS_STATUS_ID, 0x02000000);
 
 	cph_deca_init_device();
-	cph_deca_init_network(cph_config->panid, cph_config->shortid);
+
+	// Manually init pan/short .. init_network call turns on frame filtering
+//	cph_deca_init_network(cph_config->panid, cph_config->shortid);
+	dwt_setpanid(cph_config->panid);
+	dwt_setaddress16(cph_config->shortid);
 
 
 	id = dwt_readdevid();

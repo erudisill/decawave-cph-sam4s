@@ -7,9 +7,9 @@
 #include "pio.h"
 
 //#define REV_A_02
-#define REV_A_03
+//#define REV_A_03
 //#define REV_B_02
-//#define REV_ANCHOR_A_01
+#define REV_ANCHOR_A_01
 
 #ifdef REV_A_02
 #define BOARD_REV_MAJOR		0x0A
@@ -30,6 +30,13 @@
 
 //#define IMU_ENABLE			0x01
 //#define BARO_ENABLE			0x01
+
+
+#if defined(REV_ANCHOR_A_01)
+#define STDIO_ROUTE_USB			0x01
+#else
+#define STDIO_ROUTE_UART		0x01
+#endif
 
 
 /** Board oscillator settings */

@@ -113,6 +113,12 @@ static bool is_waiting_for_tx_fin = false;
 static bool is_response_expected = false;
 #endif
 
+/* Coordinator input buffer */
+#define COORD_INPUT_MAX 80
+static char input_buf[COORD_INPUT_MAX];
+static int input_index = 0;
+static volatile uint8_t input_ready = 0x00;
+
 /* Declaration of static functions. */
 static uint64 get_rx_timestamp_u64(void);
 static uint64 get_tx_timestamp_u64(void);
@@ -370,9 +376,75 @@ static void handle_event(const cph_deca_event_t * event) {
 }
 #endif
 
+static void stdio_data_ready_handler(void)
+{
+	//TODO: Move all of line-input stuff to cph_stdio
+
+	if (input_index >= COORD_INPUT_MAX)
+		return;
+
+	uint8_t prev_index = input_index;
+
+	int count = cph_stdio_read_buf(&input_buf[input_index], COORD_INPUT_MAX - input_index);
+	input_index += count;
+
+	for (int i=prev_index; i < input_index;i++) {
+		if (input_buf[i] == '\r')
+		{
+			input_ready = 0xFF;
+			return;
+		}
+	}
+
+	// If we hit the limit and reached this point (input_ready is false), clear the
+	// buffer and start over.
+	if (input_index >= COORD_INPUT_MAX) {
+		TRACE("[OVF]\r\n");
+		input_index = 0;
+		input_ready = 0x00;
+		memset(input_buf, 0, COORD_INPUT_MAX);
+	}
+}
+
+static bool stdio_line_handler(void) {
+	bool result = true;
+	int shortid_a, shortid_b;
+	int x, y;
+
+	TRACE("Command: %s\r\n", input_buf);
+
+	if (input_buf[0] == 'r') {
+		if (sscanf(&input_buf[2], "%x %x %d %d", &shortid_a, &shortid_b, &x, &y) != 4) {
+			TRACE("BAD FORMAT\r\n");
+		} else {
+			// send message
+			dwt_forcetrxoff();
+			tx_survey_request.header.dest = shortid_a;
+			tx_survey_request.target_short_id = shortid_b;
+			tx_survey_request.reps = x;
+			tx_survey_request.periodms = y;
+			cph_deca_load_frame(&tx_survey_request.header, sizeof(tx_survey_request));
+			cph_deca_send_immediate();
+		}
+	}
+	else {
+		result = false;
+	}
+
+	input_index = 0;
+	input_ready = 0x00;
+	memset(input_buf, 0, COORD_INPUT_MAX);
+
+	return result;
+}
+
 void twr_anchor_run(void) {
 	uint32_t announce_coord_ts = 0;
 	uint32_t elapsed = 0;
+
+	// Attach stdio handler
+	memset(input_buf, 0, COORD_INPUT_MAX);
+	cph_stdio_set_datready_cb(stdio_data_ready_handler);
 
 	// Setup interrupt for DW1000 (disable during configuration)
 	cph_deca_isr_init();
@@ -403,12 +475,6 @@ void twr_anchor_run(void) {
 
 	tx_survey_response.header.source = cph_config->shortid;
 	tx_survey_response.header.panid = cph_config->panid;
-
-	// Announce ourselves if we're the coordinator
-	if (cph_config->mode == CPH_MODE_COORD) {
-		cph_coordid = cph_config->shortid;
-		announce_coord(COORD_ANNOUNCE_START_BURST);
-	}
 
 
 #ifdef EXPERIMENTAL_STATE_MACHINE
@@ -441,6 +507,16 @@ void twr_anchor_run(void) {
 	dwt_setautorxreenable(1);
 
 
+	// Burst announce ourselves if we're the coordinator
+	if (cph_config->mode == CPH_MODE_COORD) {
+		TRACE("Bursting coordinator announcement...\r\n");
+		cph_coordid = cph_config->shortid;
+		announce_coord(COORD_ANNOUNCE_START_BURST);
+		announce_coord_ts = cph_get_millis();
+	}
+
+	TRACE("Beginning loop...\r\n");
+
 	/* Loop forever responding to ranging requests. */
 	while (1) {
 
@@ -456,7 +532,13 @@ void twr_anchor_run(void) {
 		dwt_setrxtimeout(0);
 		dwt_rxenable(0);
 
-		status_reg = cph_deca_wait_for_rx_finished(DEFAULT_RX_TIMEOUT * 2);
+		status_reg = cph_deca_wait_for_rx_finished_signal(DEFAULT_RX_TIMEOUT * 2, &input_ready);
+
+		if (input_ready == 0xFF) {
+			stdio_line_handler();
+			//TODO: Move all of line-input stuff to cph_stdio
+			continue;
+		}
 
 		if (status_reg & SYS_STATUS_RXFCG) {
 			uint32 frame_len;

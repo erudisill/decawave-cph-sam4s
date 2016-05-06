@@ -287,6 +287,8 @@ typedef struct PACKED {
 
 uint32_t cph_deca_wait_for_tx_finished(int timeout_ms);
 uint32_t cph_deca_wait_for_rx_finished(int timeout_ms);
+uint32_t cph_deca_wait_for_tx_finished_signal(int timeout_ms, volatile uint8_t * signal);
+uint32_t cph_deca_wait_for_rx_finished_signal(int timeout_ms, volatile uint8_t * signal);
 extern volatile uint8_t wait_event;
 
 void cph_deca_load_frame(cph_deca_msg_header_t * hdr, uint16_t size);
