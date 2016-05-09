@@ -423,7 +423,9 @@ static bool stdio_line_handler(void) {
 	int shortid_a, shortid_b;
 	int x, y;
 
-	TRACE("Command: %s\r\n", input_buf);
+	if (input_buf[0] != 'v') {
+		TRACE("[STDIN] %s\r\n", input_buf);
+	}
 
 	if (input_buf[0] == 'r') {
 		if (sscanf(&input_buf[2], "%x %x %d %d", &shortid_a, &shortid_b, &x, &y) != 4) {
@@ -449,6 +451,32 @@ static bool stdio_line_handler(void) {
 			tx_dwt_ant_dly.dly_rx = y;
 			cph_deca_load_frame(&tx_dwt_ant_dly.header, sizeof(tx_dwt_ant_dly));
 			cph_deca_send_immediate();
+		}
+	} else if (input_buf[0] == 'v') {
+		TRACE("BitStorm ");
+		TRACE("HW:%2X.%02X FW:%2X.%02X PAN_ID:%04X SHORT_ID:%04X ",
+				cph_config->hw_major,
+				cph_config->hw_minor,
+				cph_config->fw_major,
+				cph_config->fw_minor,
+				cph_config->panid,
+				cph_config->shortid);
+		if (cph_config->mode == CPH_MODE_ANCHOR) {
+			TRACE("ANCHOR\r\n");
+		} else if (cph_config->mode == CPH_MODE_COORD) {
+			TRACE("COORDINATOR\r\n");
+		} else if (cph_config->mode == CPH_MODE_TAG) {
+			TRACE("TAG\r\n");
+		} else if (cph_config->mode == CPH_MODE_LISTENER) {
+			TRACE("LISTENER\r\n");
+		} else if (cph_config->mode == CPH_MODE_SENDER) {
+			TRACE("SENDER\r\n");
+		} else if (cph_config->mode == CPH_MODE_SYNC_LISTENER) {
+			TRACE("SYNC_LISTENER\r\n");
+		} else if (cph_config->mode == CPH_MODE_SYNC_SENDER) {
+			TRACE("SYNC_SENDER\r\n");
+		} else {
+			TRACE("UNKNOWN\r\n");
 		}
 	}
 	else {
