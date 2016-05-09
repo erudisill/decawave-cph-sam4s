@@ -44,6 +44,16 @@ MAC_FC,			// mac.ctl - data frame, frame pending, pan id comp, short dest, short
 		0x0000			// mac_cs
 		};
 
+static cph_deca_msg_pair_response_t tx_pair_msg = {
+MAC_FC,			// mac.ctl - data frame, frame pending, pan id comp, short dest, short source
+		0,				// mac.seq
+		MAC_PAN_ID,		// mac.panid
+		MAC_ANCHOR_ID,	// mac.dest
+		MAC_TAG_ID,		// mac.source
+		FUNC_PAIR_RESP,		// functionCode
+		0x0000			// mac_cs
+		};
+
 static cph_deca_msg_coord_announce_t tx_coord_announce = {
 MAC_FC,			// mac.ctl - data frame, frame pending, pan id comp, short dest, short source
 		0,				// mac.seq
@@ -102,6 +112,16 @@ MAC_FC,			// mac.ctl - data frame, frame pending, pan id comp, short dest, short
 		0x0000			// mac_cs
 		};
 
+static cph_deca_msg_discover_announce_t tx_discover_msg = {
+MAC_FC,			// mac.ctl - data frame, frame pending, pan id comp, short dest, short source
+		0,				// mac.seq
+		MAC_PAN_ID,		// mac.panid
+		0xFFFF,			// mac.dest
+		MAC_TAG_ID,		// mac.source
+		FUNC_DISC_ANNO,	// functionCode
+		0x0000			// mac_cs
+		};
+
 /* Buffer to store received messages.
  * Its size is adjusted to longest frame that this example code is supposed to handle. */
 static uint8 rx_buffer[CPH_MAX_MSG_SIZE];
@@ -136,9 +156,11 @@ static uint64 get_rx_timestamp_u64(void);
 static uint64 get_tx_timestamp_u64(void);
 
 static bool can_respond_to_discover(uint16_t shortid) {
+	uint32_t elapsed = 0;
+
 	for (int i = 0; i < MAX_TAGS; i++) {
 		if (paired_tags[i].shortid == shortid) {
-			uint32_t elapsed = g_cph_millis - paired_tags[i].paired_ts;
+			elapsed = g_cph_millis - paired_tags[i].paired_ts;
 			if (elapsed < PAIR_LIFETIME) {
 				// Already paired - return no
 				return false;
@@ -148,6 +170,7 @@ static bool can_respond_to_discover(uint16_t shortid) {
 			}
 		}
 	}
+
 	// No pair found - return yes
 	return true;
 }
@@ -229,6 +252,54 @@ static double range_with_anchor(uint16_t shortid, uint16_t reps, uint16_t period
 	}
 
 	return accum / count;
+}
+
+
+static int discover(void) {
+	int result = CPH_OK;
+
+	dwt_forcetrxoff();
+
+	dwt_setrxaftertxdelay(0);
+	dwt_setrxtimeout(RESP_RX_TIMEOUT_UUS * 2);
+
+	// Broadcast anchor discovery request
+	cph_deca_load_frame((cph_deca_msg_header_t*) &tx_discover_msg, sizeof(tx_discover_msg));
+	status_reg = cph_deca_send_response_expected();
+
+	if (status_reg & SYS_STATUS_RXFCG) {
+		uint32 frame_len;
+		cph_deca_msg_header_t * rx_header;
+
+		// A frame has been received, read it into the local buffer.
+		rx_header = cph_deca_read_frame(rx_buffer, &frame_len);
+		if (rx_header) {
+			// If valid response, send the reply
+			if (rx_header->functionCode == FUNC_DISC_REPLY) {
+
+				uint16_t shortid = rx_header->source;
+
+				// Now send the pair response back
+				tx_pair_msg.header.dest = shortid;
+				cph_deca_load_frame((cph_deca_msg_header_t*) &tx_pair_msg, sizeof(tx_pair_msg));
+				cph_deca_send_immediate();
+
+				TRACE("* A %04X %04X\r\n", rx_header->source, cph_coordid);
+
+			} else {
+				result = CPH_BAD_FRAME;
+			}
+		} else {
+			result = CPH_BAD_LENGTH;
+		}
+	} else {
+		// Clear RX error events in the DW1000 status register.
+		TRACE("ERROR: discover status %08X\r\n", status_reg);
+		dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_ALL_RX_ERR);
+		result = CPH_ERROR;
+	}
+
+	return result;
 }
 
 #ifdef EXPERIMENTAL_STATE_MACHINE
@@ -345,7 +416,7 @@ static void handle_event(const cph_deca_event_t * event) {
 			int64 tof_dtu;
 
 			// Retrieve response transmission and final reception timestamps.
-			resp_tx_ts = get_tx_timestamp_u64();	//ERIC: Should pull this from final message
+			resp_tx_ts = get_tx_timestamp_u64();//ERIC: Should pull this from final message
 			final_rx_ts = event->timestamp;
 
 			// Get timestamps embedded in the final message.
@@ -379,7 +450,7 @@ static void handle_event(const cph_deca_event_t * event) {
 		else {
 			TRACE("[RCV] ");
 			for (int i = 0; i < event->info.datalength; i++)
-				TRACE("%02X ", event->data[i]);
+			TRACE("%02X ", event->data[i]);
 			TRACE("\r\n");
 
 			start_rx();
@@ -388,8 +459,7 @@ static void handle_event(const cph_deca_event_t * event) {
 }
 #endif
 
-static void stdio_data_ready_handler(void)
-{
+static void stdio_data_ready_handler(void) {
 	//TODO: Move all of line-input stuff to cph_stdio
 
 	if (input_index >= COORD_INPUT_MAX)
@@ -400,9 +470,8 @@ static void stdio_data_ready_handler(void)
 	int count = cph_stdio_read_buf(&input_buf[input_index], COORD_INPUT_MAX - input_index);
 	input_index += count;
 
-	for (int i=prev_index; i < input_index;i++) {
-		if (input_buf[i] == '\r')
-		{
+	for (int i = prev_index; i < input_index; i++) {
+		if (input_buf[i] == '\r') {
 			input_ready = 0xFF;
 			return;
 		}
@@ -452,15 +521,15 @@ static bool stdio_line_handler(void) {
 			cph_deca_load_frame(&tx_dwt_ant_dly.header, sizeof(tx_dwt_ant_dly));
 			cph_deca_send_immediate();
 		}
+	} else if (input_buf[0] == 'a') {
+		TRACE("ANCHOR DISCOVER LOOP\r\n");
+		for (int i=0;i<10;i++) {
+			discover();
+		}
 	} else if (input_buf[0] == 'v') {
 		TRACE("BitStorm ");
-		TRACE("HW:%2X.%02X FW:%2X.%02X PAN_ID:%04X SHORT_ID:%04X ",
-				cph_config->hw_major,
-				cph_config->hw_minor,
-				cph_config->fw_major,
-				cph_config->fw_minor,
-				cph_config->panid,
-				cph_config->shortid);
+		TRACE("HW:%2X.%02X FW:%2X.%02X PAN_ID:%04X SHORT_ID:%04X ", cph_config->hw_major, cph_config->hw_minor,
+				cph_config->fw_major, cph_config->fw_minor, cph_config->panid, cph_config->shortid);
 		if (cph_config->mode == CPH_MODE_ANCHOR) {
 			TRACE("ANCHOR\r\n");
 		} else if (cph_config->mode == CPH_MODE_COORD) {
@@ -478,8 +547,7 @@ static bool stdio_line_handler(void) {
 		} else {
 			TRACE("UNKNOWN\r\n");
 		}
-	}
-	else {
+	} else {
 		result = false;
 	}
 
@@ -504,7 +572,6 @@ void twr_anchor_run(void) {
 
 	TRACE("ant dly: %d %d\r\n", RX_ANT_DLY, TX_ANT_DLY);
 
-
 	// Setup DW1000
 	cph_deca_init_device();
 	cph_deca_init_network(cph_config->panid, cph_config->shortid);
@@ -521,8 +588,14 @@ void twr_anchor_run(void) {
 	tx_range_result.header.source = cph_config->shortid;
 	tx_range_result.header.panid = cph_config->panid;
 
+	tx_discover_msg.header.source = cph_config->shortid;
+	tx_discover_msg.header.panid = cph_config->panid;
+
 	tx_discover_reply.header.source = cph_config->shortid;
 	tx_discover_reply.header.panid = cph_config->panid;
+
+	tx_pair_msg.header.source = cph_config->shortid;
+	tx_pair_msg.header.panid = cph_config->panid;
 
 	tx_coord_announce.header.source = cph_config->shortid;
 	tx_coord_announce.header.panid = cph_config->panid;
@@ -535,7 +608,6 @@ void twr_anchor_run(void) {
 
 	tx_dwt_ant_dly.header.source = cph_config->shortid;
 	tx_dwt_ant_dly.header.panid = cph_config->panid;
-
 
 #ifdef EXPERIMENTAL_STATE_MACHINE
 
@@ -556,8 +628,6 @@ void twr_anchor_run(void) {
 		}
 	}
 
-
-
 #elif defined(INTERRUPT_POLLING)
 
 	// Attach DW interrupt events and callbacks and enable local interrupt pin
@@ -565,7 +635,6 @@ void twr_anchor_run(void) {
 	cph_deca_isr_enable();
 
 	dwt_setautorxreenable(1);
-
 
 	// Burst announce ourselves if we're the coordinator
 	if (cph_config->mode == CPH_MODE_COORD) {
@@ -606,18 +675,17 @@ void twr_anchor_run(void) {
 
 			rx_header = cph_deca_read_frame(rx_buffer, &frame_len);
 
-
 //			TRACE("[RCV] ");
 //			for (int i = 0; i < frame_len; i++)
 //				TRACE("%02X ", rx_buffer[i]);
 //			TRACE("\r\n");
 //			continue;
 
-			// If we're the coordinator, only accept range reports and commands
-			if (cph_config->mode == CPH_MODE_COORD) {
-				if (rx_header->functionCode != FUNC_RANGE_REPO && rx_header->functionCode != FUNC_SURV_REQU && rx_header->functionCode != FUNC_SURV_RESP && rx_header->functionCode != FUNC_COORD_ANNO)
-				continue;
-			}
+//			// If we're the coordinator, only accept range reports and commands
+//			if (cph_config->mode == CPH_MODE_COORD) {
+//				if (rx_header->functionCode != FUNC_RANGE_REPO && rx_header->functionCode != FUNC_SURV_REQU && rx_header->functionCode != FUNC_SURV_RESP && rx_header->functionCode != FUNC_COORD_ANNO)
+//				continue;
+//			}
 
 			// Look for Poll message
 			if (rx_header->functionCode == FUNC_RANGE_POLL) {
@@ -656,7 +724,7 @@ void twr_anchor_run(void) {
 				int64 tof_dtu;
 
 				// Retrieve response transmission and final reception timestamps.
-				resp_tx_ts = get_tx_timestamp_u64();//ERIC: Should pull this from final message
+				resp_tx_ts = get_tx_timestamp_u64();	//ERIC: Should pull this from final message
 				final_rx_ts = get_rx_timestamp_u64();
 
 				// Get timestamps embedded in the final message.
@@ -699,6 +767,9 @@ void twr_anchor_run(void) {
 				} else {
 					TRACE("ignoring pair with %04X\r\n", (rx_header->source));
 				}
+
+			} else if (rx_header->functionCode == FUNC_DISC_REPLY) {
+				TRACE("* A %04X\r\n", rx_header->source);
 
 			} else if (rx_header->functionCode == FUNC_PAIR_RESP) {
 				//TODO: Record the pairing details and check them when receiving a discover request
@@ -744,7 +815,8 @@ void twr_anchor_run(void) {
 				uint16_t targetid = req->target_short_id;
 				int err_count = 0;
 
-				TRACE("Survey req from %04X: %04X %d %d\r\n", req->header.source, req->target_short_id, req->reps, req->periodms);
+				TRACE("Survey req from %04X: %04X %d %d\r\n", req->header.source, req->target_short_id, req->reps,
+						req->periodms);
 				double dist = range_with_anchor(req->target_short_id, req->reps, req->periodms, &err_count);
 				TRACE("AVERAGE RANGE ====> %3.2fm\r\n", dist);
 
@@ -757,7 +829,8 @@ void twr_anchor_run(void) {
 
 			} else if (rx_header->functionCode == FUNC_SURV_RESP) {
 				cph_deca_msg_survey_response_t * resp = ((cph_deca_msg_survey_response_t*) rx_buffer);
-				TRACE("* S %04X %04X %3.2f %d\r\n", resp->header.source, resp->range.shortid, resp->range.range, resp->error_count);
+				TRACE("* S %04X %04X %3.2f %d\r\n", resp->header.source, resp->range.shortid, resp->range.range,
+						resp->error_count);
 
 			} else if (rx_header->functionCode == FUNC_DWT_ANT_DLY) {
 				cph_deca_msg_dwt_ant_dly_t * dly = ((cph_deca_msg_dwt_ant_dly_t*) rx_buffer);
@@ -771,7 +844,7 @@ void twr_anchor_run(void) {
 			} else {
 				TRACE("ERROR: unknown function code - data %02X: ", rx_header->functionCode);
 				for (int i = 0; i < frame_len; i++)
-				TRACE("%02X ", rx_buffer[i]);
+					TRACE("%02X ", rx_buffer[i]);
 				TRACE("\r\n");
 			}
 		} else {
