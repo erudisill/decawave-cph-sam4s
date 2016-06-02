@@ -758,14 +758,16 @@ void twr_anchor_run(void) {
 
 			} else if (rx_header->functionCode == FUNC_DISC_ANNO) {
 
-				if (can_respond_to_discover(rx_header->source)) {
-					/* Write and send the announce message. */
-					tx_discover_reply.coordid = cph_coordid;
-					tx_discover_reply.header.dest = rx_header->source;
-					cph_deca_load_frame(&tx_discover_reply.header, sizeof(tx_discover_reply));
-					cph_deca_send_immediate();
-				} else {
-					TRACE("ignoring pair with %04X\r\n", (rx_header->source));
+				if (cph_config->mode != CPH_MODE_COORD) {
+					if (can_respond_to_discover(rx_header->source)) {
+						/* Write and send the announce message. */
+						tx_discover_reply.coordid = cph_coordid;
+						tx_discover_reply.header.dest = rx_header->source;
+						cph_deca_load_frame(&tx_discover_reply.header, sizeof(tx_discover_reply));
+						cph_deca_send_immediate();
+					} else {
+						TRACE("ignoring pair with %04X\r\n", (rx_header->source));
+					}
 				}
 
 			} else if (rx_header->functionCode == FUNC_DISC_REPLY) {
