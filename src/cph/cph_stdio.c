@@ -72,7 +72,7 @@ void cph_stdio_set_datready_cb(cph_stdio_dataready_cb_t cb) {
 int cph_stdio_read_buf(uint8_t *data, int maxlen)
 {
 #if defined(STDIO_ROUTE_UART)
-#error cph_stdio_read not defined for UART yet
+//#error cph_stdio_read not defined for UART yet
 #elif defined(STDIO_ROUTE_USB)
 	int count = udi_cdc_get_nb_received_data();
 	if (count > maxlen) {

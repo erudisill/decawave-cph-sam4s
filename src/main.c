@@ -136,7 +136,8 @@ int main(void) {
 #endif
 
 	// Blink LED for 5 seconds
-	pio_set_pin_high(LED_STATUS0_IDX);
+	//pio_set_pin_high(LED_STATUS0_IDX);
+	pio_set_pin_low(LED_STATUS0_IDX);
 	for (int i = 0; i < (5 * 8); i++) {
 
 		uint8_t c = 0x00;
@@ -155,7 +156,8 @@ int main(void) {
 		pio_toggle_pin(LED_STATUS0_IDX);
 		cph_millis_delay(125);
 	}
-	pio_set_pin_high(LED_STATUS0_IDX);
+	//pio_set_pin_high(LED_STATUS0_IDX);
+	pio_set_pin_low(LED_STATUS0_IDX);
 
 	cph_deca_spi_init();
 

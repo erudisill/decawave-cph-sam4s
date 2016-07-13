@@ -44,6 +44,8 @@ void cs_sender_run(void);
 //#define TX_ANT_DLY 16400
 #define TX_ANT_DLY 16350
 #define RX_ANT_DLY TX_ANT_DLY
+#define TX_ANT_DLY_DEFAULT 		16350
+#define RX_ANT_DLY_DEFAULT 		TX_ANT_DLY_DEFAULT
 #else
 //#define TX_ANT_DLY 16565
 //#define RX_ANT_DLY 16565
