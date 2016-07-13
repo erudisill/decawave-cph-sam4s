@@ -30,6 +30,7 @@ void i2c_begin_transmission(uint8_t address);
 uint8_t i2c_end_transmission(uint8_t send_stop);
 uint8_t i2c_request_from(uint8_t address, uint8_t quantity, uint32_t iaddress, uint8_t isize, uint8_t send_stop);
 uint8_t i2c_write(uint8_t *data, uint8_t size);
+
 uint8_t i2c_write_byte(uint8_t data);
 uint8_t i2c_read(void);
 uint8_t i2c_available(void);
