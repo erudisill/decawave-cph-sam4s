@@ -116,7 +116,7 @@ int main(void) {
 	print_greeting();
 
 	// todo: the following function blocks and runs the imu wake on motion code
-	imu_run_console();
+//	imu_run_console();
 
 	// Blink LED for 5 seconds
 	pio_set_pin_high(LED_STATUS0_IDX);

@@ -17,8 +17,8 @@
 //#define SENDER
 //#define LISTENER
 
-#define STDIO_ROUTE_UART		0x01
-//#define STDIO_ROUTE_USB			0x01
+//#define STDIO_ROUTE_UART		0x01
+#define STDIO_ROUTE_USB			0x01
 
 #define TRACE(...)				printf(__VA_ARGS__)
 
